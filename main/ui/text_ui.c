@@ -1,0 +1,264 @@
+/**
+ * @file text_ui.c
+ * @brief Simple text-based UI implementation
+ */
+
+#include "text_ui.h"
+#include "font8x16.h"
+#include <string.h>
+
+void ui_init(void)
+{
+    ui_clear();
+}
+
+void ui_clear(void)
+{
+    display_clear(UI_COLOR_BG);
+}
+
+void ui_draw_char(int x, int y, char c, uint16_t fg, uint16_t bg)
+{
+    // Bounds check
+    if (x < 0 || y < 0 || x + FONT_WIDTH > DISPLAY_WIDTH || y + FONT_HEIGHT > DISPLAY_HEIGHT) {
+        return;
+    }
+    
+    // Get character index
+    if (c < FONT_FIRST_CHAR || c > FONT_LAST_CHAR) {
+        c = ' ';  // Replace unprintable with space
+    }
+    
+    int char_index = c - FONT_FIRST_CHAR;
+    const uint8_t *char_data = &font8x16_data[char_index * FONT_HEIGHT];
+    
+    // Draw background first (if not transparent)
+    if (bg != UI_COLOR_BG) {
+        display_fill_rect(x, y, FONT_WIDTH, FONT_HEIGHT, bg);
+    } else {
+        display_fill_rect(x, y, FONT_WIDTH, FONT_HEIGHT, UI_COLOR_BG);
+    }
+    
+    // Draw character pixels
+    for (int row = 0; row < FONT_HEIGHT; row++) {
+        uint8_t row_data = char_data[row];
+        for (int col = 0; col < FONT_WIDTH; col++) {
+            if (row_data & (0x80 >> col)) {
+                display_draw_pixel(x + col, y + row, fg);
+            }
+        }
+    }
+}
+
+void ui_draw_text(int x, int y, const char *text, uint16_t fg, uint16_t bg)
+{
+    if (!text) return;
+    
+    int start_x = x;
+    
+    while (*text) {
+        if (*text == '\n') {
+            x = start_x;
+            y += FONT_HEIGHT;
+        } else {
+            ui_draw_char(x, y, *text, fg, bg);
+            x += FONT_WIDTH;
+        }
+        text++;
+        
+        // Wrap check
+        if (x + FONT_WIDTH > DISPLAY_WIDTH) {
+            x = start_x;
+            y += FONT_HEIGHT;
+        }
+        
+        if (y + FONT_HEIGHT > DISPLAY_HEIGHT) {
+            break;  // Stop if we go off screen
+        }
+    }
+}
+
+void ui_print(int col, int row, const char *text, uint16_t fg)
+{
+    if (col < 0 || col >= UI_COLS || row < 0 || row >= UI_ROWS) return;
+    
+    int x = col * FONT_WIDTH;
+    int y = row * FONT_HEIGHT;
+    
+    ui_draw_text(x, y, text, fg, UI_COLOR_BG);
+}
+
+void ui_print_center(int row, const char *text, uint16_t fg)
+{
+    if (!text) return;
+    
+    int len = strlen(text);
+    int col = (UI_COLS - len) / 2;
+    if (col < 0) col = 0;
+    
+    ui_print(col, row, text, fg);
+}
+
+void ui_draw_line(int row, uint16_t color)
+{
+    int y = row * FONT_HEIGHT + FONT_HEIGHT / 2;
+    display_draw_hline(0, y, DISPLAY_WIDTH, color);
+}
+
+void ui_draw_title(const char *title)
+{
+    // Draw title bar background
+    display_fill_rect(0, 0, DISPLAY_WIDTH, FONT_HEIGHT + 2, RGB565(0, 60, 30));
+    
+    // Draw title text centered
+    if (title) {
+        int len = strlen(title);
+        int x = (DISPLAY_WIDTH - len * FONT_WIDTH) / 2;
+        ui_draw_text(x, 1, title, UI_COLOR_TITLE, RGB565(0, 60, 30));
+    }
+    
+    // Draw bottom line
+    display_draw_hline(0, FONT_HEIGHT + 2, DISPLAY_WIDTH, UI_COLOR_BORDER);
+}
+
+void ui_draw_status(const char *status)
+{
+    int y = DISPLAY_HEIGHT - FONT_HEIGHT - 2;
+    
+    // Draw status bar background
+    display_fill_rect(0, y, DISPLAY_WIDTH, FONT_HEIGHT + 2, RGB565(0, 40, 20));
+    
+    // Draw top line
+    display_draw_hline(0, y, DISPLAY_WIDTH, UI_COLOR_BORDER);
+    
+    // Draw status text
+    if (status) {
+        ui_draw_text(4, y + 1, status, UI_COLOR_DIMMED, RGB565(0, 40, 20));
+    }
+}
+
+void ui_draw_menu_item(int row, const char *text, bool selected, bool has_checkbox, bool checked)
+{
+    int y = row * FONT_HEIGHT;
+    int x = 4;
+    
+    // Calculate background color
+    uint16_t bg = selected ? UI_COLOR_SELECTED : UI_COLOR_BG;
+    uint16_t fg = selected ? UI_COLOR_HIGHLIGHT : UI_COLOR_TEXT;
+    
+    // Draw background
+    display_fill_rect(0, y, DISPLAY_WIDTH, FONT_HEIGHT, bg);
+    
+    // Draw selection indicator
+    if (selected) {
+        display_draw_vline(0, y, FONT_HEIGHT, UI_COLOR_HIGHLIGHT);
+        display_draw_vline(1, y, FONT_HEIGHT, UI_COLOR_HIGHLIGHT);
+    }
+    
+    // Draw checkbox if needed
+    if (has_checkbox) {
+        // Draw checkbox box
+        display_draw_rect(x, y + 2, 12, 12, UI_COLOR_BORDER);
+        
+        // Draw check mark if checked
+        if (checked) {
+            display_fill_rect(x + 3, y + 5, 6, 6, UI_COLOR_HIGHLIGHT);
+        }
+        
+        x += 16;
+    }
+    
+    // Draw text
+    if (text) {
+        ui_draw_text(x, y, text, fg, bg);
+    }
+}
+
+void ui_draw_menu(const char **items, int count, int selected, int scroll_offset)
+{
+    // Available rows for menu (after title, before status)
+    int start_row = 1;
+    int visible_rows = UI_ROWS - 2;  // Leave room for title and status
+    
+    // Calculate visible range
+    int first_visible = scroll_offset;
+    int last_visible = scroll_offset + visible_rows - 1;
+    if (last_visible >= count) last_visible = count - 1;
+    
+    // Draw visible items
+    for (int i = first_visible; i <= last_visible && i < count; i++) {
+        int display_row = start_row + (i - first_visible);
+        ui_draw_menu_item(display_row, items[i], i == selected, false, false);
+    }
+    
+    // Draw scroll indicators if needed
+    if (scroll_offset > 0) {
+        ui_print(UI_COLS - 2, start_row, "^", UI_COLOR_DIMMED);
+    }
+    if (last_visible < count - 1) {
+        ui_print(UI_COLS - 2, start_row + visible_rows - 1, "v", UI_COLOR_DIMMED);
+    }
+}
+
+void ui_draw_progress(int row, int progress, const char *text)
+{
+    int y = row * FONT_HEIGHT;
+    int bar_y = y + 4;
+    int bar_height = 8;
+    int bar_width = DISPLAY_WIDTH - 8;
+    
+    // Draw label if provided
+    if (text) {
+        ui_draw_text(4, y, text, UI_COLOR_TEXT, UI_COLOR_BG);
+        bar_y = y + FONT_HEIGHT + 2;
+    }
+    
+    // Draw progress bar outline
+    display_draw_rect(4, bar_y, bar_width, bar_height, UI_COLOR_BORDER);
+    
+    // Draw progress fill
+    if (progress > 0) {
+        int fill_width = (bar_width - 4) * progress / 100;
+        if (fill_width > 0) {
+            display_fill_rect(6, bar_y + 2, fill_width, bar_height - 4, UI_COLOR_HIGHLIGHT);
+        }
+    }
+}
+
+void ui_draw_box(int x, int y, int w, int h, uint16_t color)
+{
+    display_draw_rect(x, y, w, h, color);
+}
+
+void ui_show_message(const char *title, const char *message)
+{
+    // Calculate box dimensions
+    int box_w = DISPLAY_WIDTH - 20;
+    int box_h = 60;
+    int box_x = 10;
+    int box_y = (DISPLAY_HEIGHT - box_h) / 2;
+    
+    // Draw box background
+    display_fill_rect(box_x, box_y, box_w, box_h, RGB565(0, 40, 20));
+    
+    // Draw box border
+    display_draw_rect(box_x, box_y, box_w, box_h, UI_COLOR_BORDER);
+    display_draw_rect(box_x + 1, box_y + 1, box_w - 2, box_h - 2, UI_COLOR_BORDER);
+    
+    // Draw title
+    if (title) {
+        int title_len = strlen(title);
+        int title_x = box_x + (box_w - title_len * FONT_WIDTH) / 2;
+        ui_draw_text(title_x, box_y + 6, title, UI_COLOR_TITLE, RGB565(0, 40, 20));
+    }
+    
+    // Draw message
+    if (message) {
+        int msg_len = strlen(message);
+        int msg_x = box_x + (box_w - msg_len * FONT_WIDTH) / 2;
+        ui_draw_text(msg_x, box_y + 28, message, UI_COLOR_TEXT, RGB565(0, 40, 20));
+    }
+}
+
+
+

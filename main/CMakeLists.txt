@@ -1,0 +1,27 @@
+idf_component_register(
+    SRCS 
+        "main.c"
+        "uart_handler.c"
+        "screen_manager.c"
+        "drivers/display.c"
+        "drivers/keyboard.c"
+        "ui/text_ui.c"
+        "screens/home_screen.c"
+        "screens/wifi_scan_screen.c"
+        "screens/network_list_screen.c"
+        "screens/attack_select_screen.c"
+        "screens/deauth_screen.c"
+        "screens/placeholder_screen.c"
+    INCLUDE_DIRS 
+        "."
+        "drivers"
+        "screens"
+        "ui"
+    REQUIRES 
+        driver
+        esp_lcd
+        esp_timer
+        esp_driver_uart
+        esp_driver_gpio
+        esp_driver_spi
+)
