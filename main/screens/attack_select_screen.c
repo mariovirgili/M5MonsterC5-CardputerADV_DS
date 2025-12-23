@@ -8,6 +8,7 @@
 #include "html_select_screen.h"
 #include "sae_overflow_screen.h"
 #include "handshaker_screen.h"
+#include "sniffer_screen.h"
 #include "uart_handler.h"
 #include "text_ui.h"
 #include "esp_log.h"
@@ -158,8 +159,26 @@ static void on_key(screen_t *self, key_code_t key)
                         free(params);
                     }
                 }
+            } else if (data->selected_index == 4) {
+                // Sniffer attack selected
+                uart_send_command("start_sniffer");
+                
+                // Create sniffer screen params
+                sniffer_screen_params_t *params = malloc(sizeof(sniffer_screen_params_t));
+                if (params) {
+                    // Copy networks to sniffer screen
+                    params->networks = malloc(data->network_count * sizeof(wifi_network_t));
+                    params->count = data->network_count;
+                    
+                    if (params->networks) {
+                        memcpy(params->networks, data->networks, 
+                               data->network_count * sizeof(wifi_network_t));
+                        screen_manager_push(sniffer_screen_create, params);
+                    } else {
+                        free(params);
+                    }
+                }
             }
-            // Other attacks - TODO
             break;
             
         case KEY_ESC:

@@ -15,6 +15,9 @@ idf_component_register(
         "screens/html_select_screen.c"
         "screens/sae_overflow_screen.c"
         "screens/handshaker_screen.c"
+        "screens/sniffer_screen.c"
+        "screens/sniffer_results_screen.c"
+        "screens/sniffer_probes_screen.c"
         "screens/placeholder_screen.c"
     INCLUDE_DIRS 
         "."

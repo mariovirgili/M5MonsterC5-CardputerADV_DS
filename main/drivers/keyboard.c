@@ -229,7 +229,7 @@ static key_code_t tca8418_to_keycode(uint8_t key_code)
         
         // Row 2 - ASDFGHJKL
         case 21: return KEY_A;
-        case 22: return KEY_S;
+        case 22: return KEY_R;  // Physical R key on Cardputer
         case 23: return KEY_D;
         case 24: return KEY_F;
         case 25: return KEY_G;
@@ -253,6 +253,7 @@ static key_code_t tca8418_to_keycode(uint8_t key_code)
         // Function keys
         case 41: return KEY_TAB;
         case 51: return KEY_FN;
+        case 52: return KEY_P;  // Physical P key on Cardputer
         case 61: return KEY_ALT;
         case 71: return KEY_OPT;
         
