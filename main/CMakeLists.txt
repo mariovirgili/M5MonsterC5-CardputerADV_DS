@@ -26,6 +26,11 @@ idf_component_register(
         "screens/global_portal_screen.c"
         "screens/sniffer_dog_screen.c"
         "screens/wardrive_screen.c"
+        "screens/sniff_karma_menu_screen.c"
+        "screens/global_sniffer_screen.c"
+        "screens/karma_probes_screen.c"
+        "screens/karma_html_screen.c"
+        "screens/karma_attack_screen.c"
         "screens/placeholder_screen.c"
     INCLUDE_DIRS 
         "."
