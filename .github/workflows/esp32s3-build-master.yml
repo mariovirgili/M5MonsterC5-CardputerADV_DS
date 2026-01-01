@@ -9,6 +9,10 @@ on:
       rebuild_release:
         description: "Delete existing assets for the tag before uploading (rebuild release)"
         required: false
+        type: choice
+        options:
+          - "false"
+          - "true"
         default: "false"
   push:
     branches: [main, master]
@@ -72,6 +76,7 @@ jobs:
           echo "release_asset=${dst}" >> "$GITHUB_OUTPUT"
 
       - name: Merge full flash image
+        shell: bash
         run: |
           set -euo pipefail
           python -m esptool --chip esp32s3 merge_bin -o "binaries-esp32s3/M5MonsterC5-CardputerADV-full-${{ steps.version.outputs.version }}.bin" \
