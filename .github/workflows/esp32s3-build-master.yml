@@ -14,6 +14,14 @@ on:
           - "false"
           - "true"
         default: "false"
+      build_pages:
+        description: "Build and deploy GitHub Pages"
+        required: false
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
   push:
     branches: [main, master]
     paths:
@@ -79,6 +87,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python -m pip install --no-cache-dir esptool
           python -m esptool --chip esp32s3 merge_bin -o "binaries-esp32s3/M5MonsterC5-CardputerADV-full-${{ steps.version.outputs.version }}.bin" \
             --flash_mode dio --flash_freq 80m --flash_size 4MB \
             0x0 "binaries-esp32s3/bootloader.bin" \
@@ -216,7 +225,7 @@ jobs:
   pages:
     name: Pages Web Flasher
     needs: [release, firmware]
-    if: ${{ needs.release.result == 'success' }}
+    if: ${{ needs.release.result == 'success' && (github.event_name != 'workflow_dispatch' || inputs.build_pages == 'true') }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
