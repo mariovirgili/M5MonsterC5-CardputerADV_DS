@@ -194,7 +194,7 @@ static void launch_evil_twin(html_select_screen_data_t *data)
     }
 }
 
-static void on_key(screen_t *self, key_code_t key)
+static void on_tick(screen_t *self)
 {
     html_select_screen_data_t *data = (html_select_screen_data_t *)self->user_data;
     
@@ -203,6 +203,14 @@ static void on_key(screen_t *self, key_code_t key)
         data->needs_redraw = false;
         draw_screen(self);
     }
+}
+
+static void on_key(screen_t *self, key_code_t key)
+{
+    html_select_screen_data_t *data = (html_select_screen_data_t *)self->user_data;
+    
+    // Also check on key press for faster response
+    on_tick(self);
     
     switch (key) {
         case KEY_UP:
@@ -345,6 +353,7 @@ screen_t* html_select_screen_create(void *params)
     screen->on_key = on_key;
     screen->on_destroy = on_destroy;
     screen->on_draw = draw_screen;
+    screen->on_tick = on_tick;
     
     // Register UART callback for parsing list_sd output
     uart_register_line_callback(uart_line_callback, data);

@@ -5,7 +5,7 @@
 
 #include "attack_select_screen.h"
 #include "deauth_screen.h"
-#include "html_select_screen.h"
+#include "evil_twin_name_screen.h"
 #include "sae_overflow_screen.h"
 #include "handshaker_screen.h"
 #include "sniffer_screen.h"
@@ -107,17 +107,17 @@ static void on_key(screen_t *self, key_code_t key)
                     }
                 }
             } else if (data->selected_index == 1) {
-                // Evil Twin attack selected - go to HTML portal selection first
-                html_select_screen_params_t *params = malloc(sizeof(html_select_screen_params_t));
+                // Evil Twin attack selected - go to Evil Twin Name selection first
+                evil_twin_name_params_t *params = malloc(sizeof(evil_twin_name_params_t));
                 if (params) {
-                    // Copy networks to HTML select screen
+                    // Copy networks to Evil Twin Name screen
                     params->networks = malloc(data->network_count * sizeof(wifi_network_t));
-                    params->network_count = data->network_count;
+                    params->count = data->network_count;
                     
                     if (params->networks) {
                         memcpy(params->networks, data->networks, 
                                data->network_count * sizeof(wifi_network_t));
-                        screen_manager_push(html_select_screen_create, params);
+                        screen_manager_push(evil_twin_name_screen_create, params);
                     } else {
                         free(params);
                     }
