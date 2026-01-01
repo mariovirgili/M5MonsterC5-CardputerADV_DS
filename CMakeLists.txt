@@ -8,8 +8,8 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 project(M5MonsterC5-CardputerADV)
 
-# ===== POST-BUILD: copy binaries to binaries-esp32s3a =====
-set(EXPORT_DIR "${CMAKE_SOURCE_DIR}/binaries-esp32s3a")
+# ===== POST-BUILD: copy binaries to binaries-esp32s3 =====
+set(EXPORT_DIR "${CMAKE_SOURCE_DIR}/binaries-esp32s3")
 file(MAKE_DIRECTORY "${EXPORT_DIR}")
 
 set(COPY_STAMP "${CMAKE_BINARY_DIR}/copy_bins.stamp")
