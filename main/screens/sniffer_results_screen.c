@@ -1,9 +1,10 @@
 /**
  * @file sniffer_results_screen.c
- * @brief Sniffer results screen showing SSIDs and clients
+ * @brief Sniffer results screen showing SSIDs and clients with selection
  */
 
 #include "sniffer_results_screen.h"
+#include "station_deauth_screen.h"
 #include "uart_handler.h"
 #include "text_ui.h"
 #include "esp_log.h"
@@ -16,11 +17,15 @@ static const char *TAG = "SNIFF_RES";
 // Maximum entries
 #define MAX_LINES       32
 #define MAX_LINE_LEN    32
+#define MAX_SSID_LEN    33
 
 // Screen user data
 typedef struct {
     char lines[MAX_LINES][MAX_LINE_LEN];
+    char parent_ssid[MAX_LINES][MAX_SSID_LEN];  // Parent SSID for each MAC line
+    char current_ssid[MAX_SSID_LEN];            // Current SSID during parsing
     int line_count;
+    int selected_index;     // Currently selected line
     int scroll_offset;
     bool loading;
     bool needs_redraw;
@@ -92,6 +97,43 @@ static bool is_no_results_line(const char *line)
 }
 
 /**
+ * @brief Extract SSID from SSID line (everything before ", CH")
+ */
+static void extract_ssid(const char *line, char *ssid, size_t ssid_len)
+{
+    const char *ch_marker = strstr(line, ", CH");
+    if (ch_marker && ssid_len > 0) {
+        size_t len = ch_marker - line;
+        if (len >= ssid_len) len = ssid_len - 1;
+        strncpy(ssid, line, len);
+        ssid[len] = '\0';
+    } else if (ssid_len > 0) {
+        strncpy(ssid, line, ssid_len - 1);
+        ssid[ssid_len - 1] = '\0';
+    }
+}
+
+/**
+ * @brief Extract MAC address from line (skip leading whitespace)
+ */
+static void extract_mac(const char *line, char *mac, size_t mac_len)
+{
+    const char *p = line;
+    
+    // Skip leading whitespace
+    while (*p == ' ') p++;
+    
+    // Copy MAC (17 chars)
+    if (mac_len > 17) {
+        strncpy(mac, p, 17);
+        mac[17] = '\0';
+    } else if (mac_len > 0) {
+        strncpy(mac, p, mac_len - 1);
+        mac[mac_len - 1] = '\0';
+    }
+}
+
+/**
  * @brief UART line callback for parsing results
  */
 static void uart_line_callback(const char *line, void *user_data)
@@ -112,11 +154,28 @@ static void uart_line_callback(const char *line, void *user_data)
         return;
     }
     
-    // Check if it's an SSID line or MAC line
-    if (is_ssid_line(line) || is_mac_line(line)) {
-        // Store line as-is (MACs already have indent from UART)
+    // Check if it's an SSID line
+    if (is_ssid_line(line)) {
+        // Extract and store current SSID for following MAC lines
+        extract_ssid(line, data->current_ssid, MAX_SSID_LEN);
+        
+        // Store line
         strncpy(data->lines[data->line_count], line, MAX_LINE_LEN - 1);
         data->lines[data->line_count][MAX_LINE_LEN - 1] = '\0';
+        // SSID lines don't have a parent SSID
+        data->parent_ssid[data->line_count][0] = '\0';
+        data->line_count++;
+        data->loading = false;
+        data->needs_redraw = true;
+    }
+    // Check if it's a MAC line
+    else if (is_mac_line(line)) {
+        // Store line
+        strncpy(data->lines[data->line_count], line, MAX_LINE_LEN - 1);
+        data->lines[data->line_count][MAX_LINE_LEN - 1] = '\0';
+        // Store parent SSID for this MAC
+        strncpy(data->parent_ssid[data->line_count], data->current_ssid, MAX_SSID_LEN - 1);
+        data->parent_ssid[data->line_count][MAX_SSID_LEN - 1] = '\0';
         data->line_count++;
         data->loading = false;
         data->needs_redraw = true;
@@ -147,19 +206,30 @@ static void draw_screen(screen_t *self)
             
             if (line_idx < data->line_count) {
                 const char *line = data->lines[line_idx];
-                uint16_t color = UI_COLOR_TEXT;
+                bool is_selected = (line_idx == data->selected_index);
+                bool is_mac = (line[0] == ' ');
+                uint16_t color;
                 
-                // Indented lines (MACs) are dimmed
-                if (line[0] == ' ') {
+                // Determine color based on selection and type
+                if (is_selected) {
+                    color = UI_COLOR_SELECTED;
+                } else if (is_mac) {
                     color = UI_COLOR_DIMMED;
                 } else {
                     color = UI_COLOR_HIGHLIGHT;
                 }
                 
-                // Truncate for display
+                // Build display string with selection indicator
                 char display[31];
-                strncpy(display, line, 30);
-                display[30] = '\0';
+                if (is_selected) {
+                    display[0] = '>';
+                    strncpy(display + 1, line, 29);
+                    display[30] = '\0';
+                } else {
+                    display[0] = ' ';
+                    strncpy(display + 1, line, 29);
+                    display[30] = '\0';
+                }
                 
                 ui_print(0, start_row + i, display, color);
             }
@@ -175,7 +245,7 @@ static void draw_screen(screen_t *self)
     }
     
     // Draw status bar
-    ui_draw_status("UP/DOWN:Scroll ESC:Back");
+    ui_draw_status("UP/DN:Sel D:Deauth ESC:Back");
 }
 
 static void on_tick(screen_t *self)
@@ -199,16 +269,62 @@ static void on_key(screen_t *self, key_code_t key)
     
     switch (key) {
         case KEY_UP:
-            if (data->scroll_offset > 0) {
-                data->scroll_offset--;
+            if (data->selected_index > 0) {
+                data->selected_index--;
+                // Adjust scroll if selection goes above visible area
+                if (data->selected_index < data->scroll_offset) {
+                    data->scroll_offset = data->selected_index;
+                }
                 draw_screen(self);
             }
             break;
             
         case KEY_DOWN:
-            if (data->scroll_offset + visible_rows < data->line_count) {
-                data->scroll_offset++;
+            if (data->selected_index < data->line_count - 1) {
+                data->selected_index++;
+                // Adjust scroll if selection goes below visible area
+                if (data->selected_index >= data->scroll_offset + visible_rows) {
+                    data->scroll_offset = data->selected_index - visible_rows + 1;
+                }
                 draw_screen(self);
+            }
+            break;
+            
+        case KEY_D:
+            // Check if selected line is a MAC (client) line
+            if (data->line_count > 0 && data->selected_index < data->line_count) {
+                const char *line = data->lines[data->selected_index];
+                
+                // MAC lines start with space (indented)
+                if (line[0] == ' ' && is_mac_line(line)) {
+                    // Extract MAC address
+                    char mac[18];
+                    extract_mac(line, mac, sizeof(mac));
+                    
+                    // Get parent SSID
+                    const char *ssid = data->parent_ssid[data->selected_index];
+                    
+                    ESP_LOGI(TAG, "Starting deauth on station: %s from network: %s", mac, ssid);
+                    
+                    // Send commands: stop, select_stations MAC, start_deauth
+                    uart_send_command("stop");
+                    
+                    char select_cmd[64];
+                    snprintf(select_cmd, sizeof(select_cmd), "select_stations %s", mac);
+                    uart_send_command(select_cmd);
+                    
+                    uart_send_command("start_deauth");
+                    
+                    // Create params for station deauth screen
+                    station_deauth_params_t *params = calloc(1, sizeof(station_deauth_params_t));
+                    if (params) {
+                        strncpy(params->mac, mac, sizeof(params->mac) - 1);
+                        strncpy(params->ssid, ssid, sizeof(params->ssid) - 1);
+                        
+                        // Push deauth screen
+                        screen_manager_push(station_deauth_screen_create, params);
+                    }
+                }
             }
             break;
             
@@ -254,6 +370,7 @@ screen_t* sniffer_results_screen_create(void *params)
     }
     
     data->loading = true;
+    data->selected_index = 0;
     data->self = screen;
     
     screen->user_data = data;
@@ -274,4 +391,3 @@ screen_t* sniffer_results_screen_create(void *params)
     ESP_LOGI(TAG, "Sniffer results screen created");
     return screen;
 }
-

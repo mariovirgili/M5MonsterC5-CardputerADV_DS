@@ -17,6 +17,7 @@ idf_component_register(
         "screens/handshaker_screen.c"
         "screens/sniffer_screen.c"
         "screens/sniffer_results_screen.c"
+        "screens/station_deauth_screen.c"
         "screens/sniffer_probes_screen.c"
         "screens/global_attacks_screen.c"
         "screens/blackout_screen.c"

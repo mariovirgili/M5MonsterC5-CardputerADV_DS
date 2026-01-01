@@ -17,3 +17,4 @@ screen_t* bt_locator_screen_create(void *params);
 
 #endif // BT_LOCATOR_SCREEN_H
 
+
