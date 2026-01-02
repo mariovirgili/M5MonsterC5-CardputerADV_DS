@@ -20,6 +20,9 @@ static esp_lcd_panel_handle_t panel_handle = NULL;
 #define LINE_BUFFER_SIZE (DISPLAY_WIDTH * 2)  // One line in RGB565
 static uint16_t line_buffer[DISPLAY_WIDTH];
 
+// Framebuffer for screenshot functionality
+static uint16_t framebuffer[DISPLAY_WIDTH * DISPLAY_HEIGHT];
+
 esp_err_t display_init(void)
 {
     ESP_LOGI(TAG, "Initializing ST7789 display...");
@@ -106,9 +109,13 @@ void display_fill_rect(int x, int y, int w, int h, uint16_t color)
         line_buffer[i] = swapped;
     }
     
-    // Draw line by line
+    // Draw line by line and update framebuffer
     for (int row = y; row < y + h; row++) {
         esp_lcd_panel_draw_bitmap(panel_handle, x, row, x + w, row + 1, line_buffer);
+        // Update framebuffer (store original color, not swapped)
+        for (int col = x; col < x + w; col++) {
+            framebuffer[row * DISPLAY_WIDTH + col] = color;
+        }
     }
 }
 
@@ -118,6 +125,8 @@ void display_draw_pixel(int x, int y, uint16_t color)
     
     uint16_t swapped = ((color >> 8) & 0xFF) | ((color & 0xFF) << 8);
     esp_lcd_panel_draw_bitmap(panel_handle, x, y, x + 1, y + 1, &swapped);
+    // Update framebuffer
+    framebuffer[y * DISPLAY_WIDTH + x] = color;
 }
 
 void display_draw_hline(int x, int y, int w, uint16_t color)
@@ -151,4 +160,9 @@ void display_set_backlight(uint8_t brightness)
 void display_flush(void)
 {
     // No-op for direct drawing mode
+}
+
+const uint16_t* display_get_framebuffer(void)
+{
+    return framebuffer;
 }

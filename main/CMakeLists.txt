@@ -5,6 +5,7 @@ idf_component_register(
         "screen_manager.c"
         "drivers/display.c"
         "drivers/keyboard.c"
+        "drivers/screenshot.c"
         "ui/text_ui.c"
         "screens/home_screen.c"
         "screens/wifi_scan_screen.c"
@@ -51,4 +52,7 @@ idf_component_register(
         esp_driver_uart
         esp_driver_gpio
         esp_driver_spi
+        fatfs
+        vfs
+        sdmmc
 )

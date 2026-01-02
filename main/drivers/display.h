@@ -115,4 +115,10 @@ void display_set_backlight(uint8_t brightness);
  */
 void display_flush(void);
 
+/**
+ * @brief Get pointer to framebuffer for screenshot functionality
+ * @return Pointer to RGB565 framebuffer (240x135 pixels)
+ */
+const uint16_t* display_get_framebuffer(void);
+
 #endif // DISPLAY_H

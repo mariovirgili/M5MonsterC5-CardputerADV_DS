@@ -195,11 +195,12 @@ static const key_code_t _key_value_map[4][14] = {
     // Row 2: fn shift a s d f g h j k l ; ' enter (code 3=fn, code 7=shift)
     {KEY_FN, KEY_SHIFT, KEY_A, KEY_S, KEY_D, KEY_F, KEY_G, KEY_H, KEY_J, KEY_K, KEY_L, KEY_NONE, KEY_NONE, KEY_ENTER},
     // Row 3: ctrl opt alt z x c v b n m , . / space
-    {KEY_NONE, KEY_OPT, KEY_ALT, KEY_Z, KEY_X, KEY_C, KEY_V, KEY_B, KEY_N, KEY_M, KEY_NONE, KEY_NONE, KEY_NONE, KEY_SPACE}
+    {KEY_CTRL, KEY_OPT, KEY_ALT, KEY_Z, KEY_X, KEY_C, KEY_V, KEY_B, KEY_N, KEY_M, KEY_NONE, KEY_NONE, KEY_NONE, KEY_SPACE}
 };
 
-// Shift key state
+// Modifier key states
 static bool shift_held = false;
+static bool ctrl_held = false;
 
 /**
  * @brief Remap TCA8418 raw coordinates to Cardputer layout
@@ -346,13 +347,17 @@ static void scan_keyboard(void)
         
         key_code_t key = tca8418_to_keycode(key_code);
         
-        // Track shift state (press and release)
+        // Track modifier key states (press and release)
         if (key == KEY_SHIFT) {
             shift_held = pressed;
             ESP_LOGI(TAG, "Shift %s", pressed ? "pressed" : "released");
         }
+        if (key == KEY_CTRL) {
+            ctrl_held = pressed;
+            ESP_LOGI(TAG, "Ctrl %s", pressed ? "pressed" : "released");
+        }
         
-        if (pressed && key != KEY_NONE && key != KEY_SHIFT) {
+        if (pressed && key != KEY_NONE && key != KEY_SHIFT && key != KEY_CTRL) {
             last_key = key;
             xQueueSend(key_queue, &key, 0);
             
@@ -399,4 +404,9 @@ bool keyboard_is_pressed(key_code_t key)
 bool keyboard_is_shift_held(void)
 {
     return shift_held;
+}
+
+bool keyboard_is_ctrl_held(void)
+{
+    return ctrl_held;
 }

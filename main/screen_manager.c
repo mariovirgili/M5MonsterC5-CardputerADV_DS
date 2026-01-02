@@ -5,6 +5,7 @@
 
 #include "screen_manager.h"
 #include "text_ui.h"
+#include "screenshot.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdlib.h>
@@ -38,6 +39,22 @@ static void key_event_handler(key_code_t key, bool pressed)
 {
     // Only handle key press, not release
     if (!pressed) return;
+    
+    // Check for CTRL+S screenshot combination
+    if (key == KEY_S && keyboard_is_ctrl_held()) {
+        ESP_LOGI(TAG, "CTRL+S detected - taking screenshot");
+        if (screenshot_is_available()) {
+            esp_err_t ret = screenshot_take();
+            if (ret == ESP_OK) {
+                ESP_LOGI(TAG, "Screenshot saved successfully");
+            } else {
+                ESP_LOGE(TAG, "Screenshot failed: %s", esp_err_to_name(ret));
+            }
+        } else {
+            ESP_LOGW(TAG, "Screenshot not available (SD card not mounted)");
+        }
+        return;  // Don't pass CTRL+S to screen
+    }
     
     screen_manager_handle_key(key);
 }

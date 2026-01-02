@@ -14,8 +14,9 @@
 #include "uart_handler.h"
 #include "screen_manager.h"
 #include "home_screen.h"
+#include "screenshot.h"
 
-#define JANOS_ADV_VERSION "1.0.0"
+#define JANOS_ADV_VERSION "1.0.1"
 
 static const char *TAG = "MAIN";
 
@@ -31,6 +32,16 @@ void app_main(void)
         return;
     }
     ESP_LOGI(TAG, "Display initialized successfully");
+
+    // Initialize screenshot module (SD card)
+    ESP_LOGI(TAG, "Initializing screenshot module...");
+    ret = screenshot_init();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Screenshot module initialization failed - screenshots disabled");
+        // Continue anyway - screenshots are optional
+    } else {
+        ESP_LOGI(TAG, "Screenshot module initialized successfully");
+    }
 
     // Initialize keyboard
     ESP_LOGI(TAG, "Initializing keyboard...");
