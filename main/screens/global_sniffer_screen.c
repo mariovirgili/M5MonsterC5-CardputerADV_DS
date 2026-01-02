@@ -127,6 +127,10 @@ static void on_resume(screen_t *self)
     // Re-register UART callback after returning from sub-screens
     uart_register_line_callback(uart_line_callback, data);
     
+    // Resume sniffer - unselect networks first (may have been selected for deauth)
+    uart_send_command("unselect_networks");
+    uart_send_command("start_sniffer_noscan");
+    
     // Redraw the screen
     draw_screen(self);
 }

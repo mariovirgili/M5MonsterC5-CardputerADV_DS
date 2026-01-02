@@ -128,6 +128,20 @@ static void on_destroy(screen_t *self)
     }
 }
 
+static void on_resume(screen_t *self)
+{
+    sniffer_screen_data_t *data = (sniffer_screen_data_t *)self->user_data;
+    
+    // Re-register UART callback after returning from sub-screens
+    uart_register_line_callback(uart_line_callback, data);
+    
+    // Resume sniffer with selected networks
+    uart_send_command("start_sniffer");
+    
+    // Redraw the screen
+    draw_screen(self);
+}
+
 screen_t* sniffer_screen_create(void *params)
 {
     sniffer_screen_params_t *sn_params = (sniffer_screen_params_t *)params;
@@ -164,6 +178,7 @@ screen_t* sniffer_screen_create(void *params)
     screen->user_data = data;
     screen->on_key = on_key;
     screen->on_destroy = on_destroy;
+    screen->on_resume = on_resume;
     screen->on_draw = draw_screen;
     screen->on_tick = on_tick;
     
