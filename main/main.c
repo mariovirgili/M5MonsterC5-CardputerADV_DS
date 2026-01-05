@@ -18,7 +18,7 @@
 #include "battery.h"
 #include "settings.h"
 
-#define JANOS_ADV_VERSION "1.0.8"
+#define JANOS_ADV_VERSION "1.1.0"
 
 static const char *TAG = "MAIN";
 
