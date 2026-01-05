@@ -97,7 +97,7 @@ static void on_key(screen_t *self, key_code_t key)
         case KEY_ESC:
         case KEY_Q:
             // Send stop command and go back
-            uart_send_command("stop_deauth");
+            uart_send_command("stop");
             screen_manager_pop();
             break;
             

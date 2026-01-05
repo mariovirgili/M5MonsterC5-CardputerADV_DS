@@ -5,6 +5,7 @@
 
 #include "network_list_screen.h"
 #include "attack_select_screen.h"
+#include "network_info_screen.h"
 #include "uart_handler.h"
 #include "text_ui.h"
 #include "esp_log.h"
@@ -212,7 +213,7 @@ static void draw_screen(screen_t *self)
     }
     
     // Draw status bar
-    ui_draw_status("SPACE:Sel N:Next ESC:Back");
+    ui_draw_status("ENTER:Sel N:Nxt I:Info Esc:Bck");
 }
 
 static void on_key(screen_t *self, key_code_t key)
@@ -286,6 +287,17 @@ static void on_key(screen_t *self, key_code_t key)
             draw_screen(self);
             break;
             
+        case KEY_I:
+            // Show network info for currently selected network
+            if (!data->focus_on_next && data->selected_index < data->count) {
+                network_info_params_t *params = malloc(sizeof(network_info_params_t));
+                if (params) {
+                    params->network = &data->networks[data->selected_index];
+                    screen_manager_push(network_info_screen_create, params);
+                }
+            }
+            break;
+            
         case KEY_RIGHT:
             // Navigate to attack selection (alternative to ENTER on Next)
             navigate_to_attack(data);
@@ -314,6 +326,12 @@ static void on_key(screen_t *self, key_code_t key)
         default:
             break;
     }
+}
+
+static void on_resume(screen_t *self)
+{
+    // Redraw screen when returning from info view
+    draw_screen(self);
 }
 
 static void on_destroy(screen_t *self)
@@ -358,6 +376,7 @@ screen_t* network_list_screen_create(void *params)
     screen->on_key = on_key;
     screen->on_destroy = on_destroy;
     screen->on_draw = draw_screen;
+    screen->on_resume = on_resume;
     
     // Draw initial screen
     draw_screen(screen);

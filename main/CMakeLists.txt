@@ -11,6 +11,7 @@ idf_component_register(
         "screens/home_screen.c"
         "screens/wifi_scan_screen.c"
         "screens/network_list_screen.c"
+        "screens/network_info_screen.c"
         "screens/attack_select_screen.c"
         "screens/deauth_screen.c"
         "screens/evil_twin_screen.c"

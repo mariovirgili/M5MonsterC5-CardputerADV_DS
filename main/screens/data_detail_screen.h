@@ -27,3 +27,4 @@ screen_t* data_detail_screen_create(void *params);
 
 #endif // DATA_DETAIL_SCREEN_H
 
+
