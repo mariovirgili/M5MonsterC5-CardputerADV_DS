@@ -613,6 +613,23 @@
       return files;
     };
 
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const resetAfterFlash = async () => {
+      if (!state.port || typeof state.port.setSignals !== "function") return false;
+      try {
+        // Toggle RTS/DTR to reset the ESP32 via USB-serial control lines.
+        await state.port.setSignals({ dataTerminalReady: false, requestToSend: true });
+        await sleep(120);
+        await state.port.setSignals({ dataTerminalReady: false, requestToSend: false });
+        await sleep(120);
+        await state.port.setSignals({ dataTerminalReady: true, requestToSend: false });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
 const flash = async () => {
       ensureSupport();
       if (!state.esploader) {
@@ -640,9 +657,15 @@ const flash = async () => {
         };
         await state.esploader.writeFlash(flashOptions);
         await state.esploader.after();
+        const resetOk = await resetAfterFlash();
         ui.progress.style.width = "100%";
-        setStatus("Flash complete. Press RESET if the board doesn't reboot.");
-        log("Flash complete.");
+        if (resetOk) {
+          setStatus("Flash complete. Device rebooted.");
+          log("Flash complete. Reset signal sent.");
+        } else {
+          setStatus("Flash complete. Press RESET if the board doesn't reboot.");
+          log("Flash complete.");
+        }
       } catch (err) {
         console.error(err);
         setStatus(err.message || "Flash failed", "error");
