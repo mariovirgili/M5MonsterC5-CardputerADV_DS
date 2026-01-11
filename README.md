@@ -1,7 +1,6 @@
 # M5MonsterC5-CardputerADV
 
 <img src="https://github.com/user-attachments/assets/ca844910-26de-4df7-9e49-e5623373dcc3" width="30%">
-<img src="https://github.com/user-attachments/assets/202a62bb-cd05-4d61-91c8-edb77445d21e" width="30%">
 
 ---
 
