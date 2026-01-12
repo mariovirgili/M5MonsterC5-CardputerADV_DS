@@ -20,10 +20,10 @@
 #include "settings.h"
 #include "buzzer.h"
 
-#define JANOS_ADV_VERSION "1.3.0"
+#define JANOS_ADV_VERSION "1.3.2"
 
 // Screen timeout configuration
-#define SCREEN_TIMEOUT_MS  15000  // 15 seconds
+#define SCREEN_TIMEOUT_MS  30000  // 30 seconds
 
 static const char *TAG = "MAIN";
 

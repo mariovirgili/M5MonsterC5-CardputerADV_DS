@@ -15,7 +15,7 @@
 static const char *TAG = "NET_LIST";
 
 // Maximum visible items
-#define VISIBLE_ITEMS   6
+#define VISIBLE_ITEMS   5
 
 // Screen user data
 typedef struct {

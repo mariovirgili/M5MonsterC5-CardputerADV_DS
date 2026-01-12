@@ -5,6 +5,7 @@
 
 #include "settings_screen.h"
 #include "uart_pins_screen.h"
+#include "vendor_lookup_screen.h"
 #include "text_ui.h"
 #include "esp_log.h"
 #include <string.h>
@@ -15,6 +16,7 @@ static const char *TAG = "SETTINGS_SCREEN";
 // Menu items
 static const char *menu_items[] = {
     "UART Pins",
+    "Vendor Lookup",
 };
 
 #define MENU_ITEM_COUNT (sizeof(menu_items) / sizeof(menu_items[0]))
@@ -76,6 +78,9 @@ static void on_key(screen_t *self, key_code_t key)
                 switch (data->selected_index) {
                     case 0:  // UART Pins
                         screen_manager_push(uart_pins_screen_create, NULL);
+                        break;
+                    case 1:  // Vendor Lookup
+                        screen_manager_push(vendor_lookup_screen_create, NULL);
                         break;
                 }
             }
