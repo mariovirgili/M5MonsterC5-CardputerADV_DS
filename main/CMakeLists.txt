@@ -51,6 +51,10 @@ idf_component_register(
         "screens/data_detail_screen.c"
         "screens/settings_screen.c"
         "screens/uart_pins_screen.c"
+        "screens/network_attacks_screen.c"
+        "screens/wifi_connect_screen.c"
+        "screens/arp_hosts_screen.c"
+        "screens/arp_attack_screen.c"
     INCLUDE_DIRS 
         "."
         "drivers"

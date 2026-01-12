@@ -10,6 +10,7 @@
 #include "bt_menu_screen.h"
 #include "deauth_detector_screen.h"
 #include "compromised_menu_screen.h"
+#include "network_attacks_screen.h"
 #include "settings_screen.h"
 #include "placeholder_screen.h"
 #include "text_ui.h"
@@ -32,14 +33,17 @@ static const menu_item_t menu_items[] = {
     {"Deauth Detector", deauth_detector_screen_create, NULL},
     {"Bluetooth", bt_menu_screen_create, NULL},
     {"Compromised data", compromised_menu_screen_create, NULL},
+    {"Network Attacks", network_attacks_screen_create, NULL},
     {"Settings", settings_screen_create, NULL},
 };
 
 #define MENU_ITEM_COUNT (sizeof(menu_items) / sizeof(menu_items[0]))
+#define VISIBLE_ITEMS 6
 
 // Screen user data
 typedef struct {
     int selected_index;
+    int scroll_offset;
 } home_screen_data_t;
 
 static void draw_screen(screen_t *self)
@@ -51,9 +55,23 @@ static void draw_screen(screen_t *self)
     // Draw title
     ui_draw_title("LABORATORIUM");
     
-    // Draw menu items
-    for (int i = 0; i < MENU_ITEM_COUNT; i++) {
-        ui_draw_menu_item(i + 1, menu_items[i].title, i == data->selected_index, false, false);
+    // Draw only visible menu items
+    int visible_end = data->scroll_offset + VISIBLE_ITEMS;
+    if (visible_end > MENU_ITEM_COUNT) {
+        visible_end = MENU_ITEM_COUNT;
+    }
+    
+    for (int i = data->scroll_offset; i < visible_end; i++) {
+        int row = (i - data->scroll_offset) + 1;
+        ui_draw_menu_item(row, menu_items[i].title, i == data->selected_index, false, false);
+    }
+    
+    // Scroll indicators
+    if (data->scroll_offset > 0) {
+        ui_print(UI_COLS - 2, 1, "^", UI_COLOR_DIMMED);
+    }
+    if (data->scroll_offset + VISIBLE_ITEMS < (int)MENU_ITEM_COUNT) {
+        ui_print(UI_COLS - 2, VISIBLE_ITEMS, "v", UI_COLOR_DIMMED);
     }
     
     // Draw status bar
@@ -61,12 +79,17 @@ static void draw_screen(screen_t *self)
 }
 
 // Optimized: redraw only two changed rows
-static void redraw_selection(home_screen_data_t *data, int old_index, int new_index)
+static void redraw_two_items(home_screen_data_t *data, int old_index, int new_index)
 {
-    // Redraw old selection (now unselected)
-    ui_draw_menu_item(old_index + 1, menu_items[old_index].title, false, false, false);
-    // Redraw new selection (now selected)
-    ui_draw_menu_item(new_index + 1, menu_items[new_index].title, true, false, false);
+    // Only redraw if visible
+    if (old_index >= data->scroll_offset && old_index < data->scroll_offset + VISIBLE_ITEMS) {
+        int old_row = (old_index - data->scroll_offset) + 1;
+        ui_draw_menu_item(old_row, menu_items[old_index].title, false, false, false);
+    }
+    if (new_index >= data->scroll_offset && new_index < data->scroll_offset + VISIBLE_ITEMS) {
+        int new_row = (new_index - data->scroll_offset) + 1;
+        ui_draw_menu_item(new_row, menu_items[new_index].title, true, false, false);
+    }
 }
 
 static void on_key(screen_t *self, key_code_t key)
@@ -76,17 +99,39 @@ static void on_key(screen_t *self, key_code_t key)
     switch (key) {
         case KEY_UP:
             if (data->selected_index > 0) {
-                int old = data->selected_index;
-                data->selected_index--;
-                redraw_selection(data, old, data->selected_index);
+                int old_index = data->selected_index;
+                
+                // Check if at first visible item on page - do page jump
+                if (data->selected_index == data->scroll_offset && data->scroll_offset > 0) {
+                    data->scroll_offset -= VISIBLE_ITEMS;
+                    if (data->scroll_offset < 0) data->scroll_offset = 0;
+                    // Land on last item of previous page
+                    data->selected_index = data->scroll_offset + VISIBLE_ITEMS - 1;
+                    if (data->selected_index >= (int)MENU_ITEM_COUNT) {
+                        data->selected_index = (int)MENU_ITEM_COUNT - 1;
+                    }
+                    draw_screen(self);
+                } else {
+                    data->selected_index--;
+                    redraw_two_items(data, old_index, data->selected_index);
+                }
             }
             break;
             
         case KEY_DOWN:
-            if (data->selected_index < MENU_ITEM_COUNT - 1) {
-                int old = data->selected_index;
+            if (data->selected_index < (int)MENU_ITEM_COUNT - 1) {
+                int old_index = data->selected_index;
                 data->selected_index++;
-                redraw_selection(data, old, data->selected_index);
+                
+                // Check if we need to scroll (page down)
+                if (data->selected_index >= data->scroll_offset + VISIBLE_ITEMS) {
+                    // Jump to next page - don't adjust back for partial pages
+                    data->scroll_offset += VISIBLE_ITEMS;
+                    data->selected_index = data->scroll_offset;
+                    draw_screen(self);
+                } else {
+                    redraw_two_items(data, old_index, data->selected_index);
+                }
             }
             break;
             

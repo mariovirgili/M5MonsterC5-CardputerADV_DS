@@ -17,7 +17,7 @@ static const char *TAG = "GPORTAL_HTML";
 
 // Maximum HTML files and visible items
 #define MAX_HTML_FILES  24
-#define VISIBLE_ITEMS   5
+#define VISIBLE_ITEMS   6
 #define MAX_FILENAME_LEN 32
 
 // Screen user data
@@ -237,10 +237,8 @@ static void on_key(screen_t *self, key_code_t key)
                 int old_idx = data->selected_index;
                 // Check if at last visible item on page - do page jump
                 if (data->selected_index == data->scroll_offset + VISIBLE_ITEMS - 1) {
+                    // Jump to next page - don't adjust back for partial pages
                     data->scroll_offset += VISIBLE_ITEMS;
-                    int max_scroll = data->file_count - VISIBLE_ITEMS;
-                    if (max_scroll < 0) max_scroll = 0;
-                    if (data->scroll_offset > max_scroll) data->scroll_offset = max_scroll;
                     data->selected_index = data->scroll_offset;
                     draw_screen(self);  // Full redraw on page jump
                 } else {
