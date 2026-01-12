@@ -8,6 +8,7 @@
 #include "arp_attack_screen.h"
 #include "uart_handler.h"
 #include "text_ui.h"
+#include "buzzer.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdlib.h>
@@ -119,6 +120,7 @@ screen_t* arp_attack_screen_create(void *params)
     char cmd[64];
     snprintf(cmd, sizeof(cmd), "arp_ban %s", data->mac);
     uart_send_command(cmd);
+    buzzer_beep_attack();
     
     ESP_LOGI(TAG, "ARP attack started on %s (%s)", data->ip, data->mac);
     return screen;

@@ -11,6 +11,7 @@
 #include "sniffer_screen.h"
 #include "uart_handler.h"
 #include "text_ui.h"
+#include "buzzer.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdlib.h>
@@ -90,6 +91,7 @@ static void on_key(screen_t *self, key_code_t key)
             if (data->selected_index == 0) {
                 // Deauth attack selected
                 uart_send_command("start_deauth");
+                buzzer_beep_attack();
                 
                 // Create deauth screen params
                 deauth_screen_params_t *params = malloc(sizeof(deauth_screen_params_t));
@@ -132,6 +134,7 @@ static void on_key(screen_t *self, key_code_t key)
                 
                 // Send start command
                 uart_send_command("start_sae_overflow");
+                buzzer_beep_attack();
                 
                 // Create SAE overflow screen params
                 sae_overflow_screen_params_t *params = malloc(sizeof(sae_overflow_screen_params_t));
@@ -143,6 +146,7 @@ static void on_key(screen_t *self, key_code_t key)
             } else if (data->selected_index == 3) {
                 // Handshaker attack selected
                 uart_send_command("start_handshake");
+                buzzer_beep_attack();
                 
                 // Create handshaker screen params
                 handshaker_screen_params_t *params = malloc(sizeof(handshaker_screen_params_t));
@@ -162,6 +166,7 @@ static void on_key(screen_t *self, key_code_t key)
             } else if (data->selected_index == 4) {
                 // Sniffer attack selected
                 uart_send_command("start_sniffer");
+                buzzer_beep_attack();
                 
                 // Create sniffer screen params
                 sniffer_screen_params_t *params = malloc(sizeof(sniffer_screen_params_t));

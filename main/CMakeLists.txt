@@ -8,6 +8,7 @@ idf_component_register(
         "drivers/keyboard.c"
         "drivers/screenshot.c"
         "drivers/battery.c"
+        "drivers/buzzer.c"
         "ui/text_ui.c"
         "screens/home_screen.c"
         "screens/wifi_scan_screen.c"
@@ -67,6 +68,7 @@ idf_component_register(
         esp_driver_uart
         esp_driver_gpio
         esp_driver_spi
+        esp_driver_i2s
         fatfs
         vfs
         sdmmc

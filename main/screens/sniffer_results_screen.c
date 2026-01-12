@@ -7,6 +7,7 @@
 #include "station_deauth_screen.h"
 #include "uart_handler.h"
 #include "text_ui.h"
+#include "buzzer.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdlib.h>
@@ -208,6 +209,7 @@ static void execute_deauth_sequence(sniffer_results_data_t *data, int network_in
     
     // Start deauth
     uart_send_command("start_deauth");
+    buzzer_beep_attack();
     
     // Create params for station deauth screen
     station_deauth_params_t *params = calloc(1, sizeof(station_deauth_params_t));

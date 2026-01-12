@@ -7,6 +7,7 @@
 #include "evil_twin_screen.h"
 #include "uart_handler.h"
 #include "text_ui.h"
+#include "buzzer.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include <string.h>
@@ -176,6 +177,7 @@ static void launch_evil_twin(html_select_screen_data_t *data)
     
     // Send start_evil_twin command
     uart_send_command("start_evil_twin");
+    buzzer_beep_attack();
     
     // Create evil twin screen params
     evil_twin_screen_params_t *params = malloc(sizeof(evil_twin_screen_params_t));

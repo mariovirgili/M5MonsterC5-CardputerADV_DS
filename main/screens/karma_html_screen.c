@@ -7,6 +7,7 @@
 #include "karma_attack_screen.h"
 #include "uart_handler.h"
 #include "text_ui.h"
+#include "buzzer.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdlib.h>
@@ -234,6 +235,7 @@ static void on_key(screen_t *self, key_code_t key)
                 snprintf(karma_cmd, sizeof(karma_cmd), "start_karma %d", data->probe_index);
                 ESP_LOGW(TAG, "UART TX: '%s' (for SSID: '%s')", karma_cmd, data->ssid);
                 uart_send_command(karma_cmd);
+                buzzer_beep_attack();
                 
                 // Create params for attack screen
                 karma_attack_params_t *params = malloc(sizeof(karma_attack_params_t));
