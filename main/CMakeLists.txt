@@ -57,6 +57,10 @@ idf_component_register(
         "screens/wifi_connect_screen.c"
         "screens/arp_hosts_screen.c"
         "screens/arp_attack_screen.c"
+        "screens/rogue_ap_ssid_screen.c"
+        "screens/rogue_ap_password_screen.c"
+        "screens/rogue_ap_html_screen.c"
+        "screens/rogue_ap_screen.c"
     INCLUDE_DIRS 
         "."
         "drivers"

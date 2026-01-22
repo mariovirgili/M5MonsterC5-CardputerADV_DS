@@ -6,6 +6,8 @@
 #include "attack_select_screen.h"
 #include "deauth_screen.h"
 #include "evil_twin_name_screen.h"
+#include "rogue_ap_ssid_screen.h"
+#include "rogue_ap_password_screen.h"
 #include "sae_overflow_screen.h"
 #include "handshaker_screen.h"
 #include "sniffer_screen.h"
@@ -22,6 +24,7 @@ static const char *TAG = "ATTACK_SEL";
 static const char *attack_names[] = {
     "Deauth",
     "Evil Twin",
+    "Rogue AP",
     "SAE Overflow",
     "Handshaker",
     "Sniffer",
@@ -125,6 +128,32 @@ static void on_key(screen_t *self, key_code_t key)
                     }
                 }
             } else if (data->selected_index == 2) {
+                // Rogue AP attack selected
+                if (data->network_count == 1) {
+                    // Only 1 network - go directly to password screen
+                    rogue_ap_password_params_t *params = malloc(sizeof(rogue_ap_password_params_t));
+                    if (params) {
+                        strncpy(params->ssid, data->networks[0].ssid, sizeof(params->ssid) - 1);
+                        params->ssid[sizeof(params->ssid) - 1] = '\0';
+                        screen_manager_push(rogue_ap_password_screen_create, params);
+                    }
+                } else {
+                    // Multiple networks - go to SSID selection first
+                    rogue_ap_ssid_params_t *params = malloc(sizeof(rogue_ap_ssid_params_t));
+                    if (params) {
+                        params->networks = malloc(data->network_count * sizeof(wifi_network_t));
+                        params->count = data->network_count;
+                        
+                        if (params->networks) {
+                            memcpy(params->networks, data->networks, 
+                                   data->network_count * sizeof(wifi_network_t));
+                            screen_manager_push(rogue_ap_ssid_screen_create, params);
+                        } else {
+                            free(params);
+                        }
+                    }
+                }
+            } else if (data->selected_index == 3) {
                 // SAE Overflow - requires exactly 1 network
                 if (data->network_count != 1) {
                     ui_show_message("Error", "Select exactly 1 network");
@@ -143,7 +172,7 @@ static void on_key(screen_t *self, key_code_t key)
                     params->network = data->networks[0];
                     screen_manager_push(sae_overflow_screen_create, params);
                 }
-            } else if (data->selected_index == 3) {
+            } else if (data->selected_index == 4) {
                 // Handshaker attack selected
                 uart_send_command("start_handshake");
                 buzzer_beep_attack();
@@ -163,7 +192,7 @@ static void on_key(screen_t *self, key_code_t key)
                         free(params);
                     }
                 }
-            } else if (data->selected_index == 4) {
+            } else if (data->selected_index == 5) {
                 // Sniffer attack selected
                 uart_send_command("start_sniffer");
                 buzzer_beep_attack();
