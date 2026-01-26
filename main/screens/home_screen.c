@@ -13,29 +13,39 @@
 #include "network_attacks_screen.h"
 #include "settings_screen.h"
 #include "placeholder_screen.h"
+#include "settings.h"
 #include "text_ui.h"
 #include "esp_log.h"
 #include <string.h>
 
 static const char *TAG = "HOME_SCREEN";
 
-// Menu items
+// Menu items with both attack and test versions of titles
 typedef struct {
-    const char *title;
+    const char *title_attack;   // Title when red team enabled
+    const char *title_test;     // Title when red team disabled
     screen_create_fn create_fn;
     const char *placeholder_title;
 } menu_item_t;
 
 static const menu_item_t menu_items[] = {
-    {"WiFi Scan & Attack", wifi_scan_screen_create, NULL},
-    {"Global WiFi Attacks", global_attacks_screen_create, NULL},
-    {"WiFi Sniff&Karma", sniff_karma_menu_screen_create, NULL},
-    {"Deauth Detector", deauth_detector_screen_create, NULL},
-    {"Bluetooth", bt_menu_screen_create, NULL},
-    {"Compromised data", compromised_menu_screen_create, NULL},
-    {"Network Attacks", network_attacks_screen_create, NULL},
-    {"Settings", settings_screen_create, NULL},
+    {"WiFi Scan & Attack", "WiFi Scan & Test", wifi_scan_screen_create, NULL},
+    {"Global WiFi Attacks", "Global WiFi Tests", global_attacks_screen_create, NULL},
+    {"WiFi Sniff&Karma", "WiFi Sniff&Karma", sniff_karma_menu_screen_create, NULL},
+    {"Deauth Detector", "Deauth Detector", deauth_detector_screen_create, NULL},
+    {"Bluetooth", "Bluetooth", bt_menu_screen_create, NULL},
+    {"Compromised data", "Compromised data", compromised_menu_screen_create, NULL},
+    {"Network Attacks", "Network Tests", network_attacks_screen_create, NULL},
+    {"Settings", "Settings", settings_screen_create, NULL},
 };
+
+// Helper to get the correct title based on red team setting
+static const char* get_menu_title(int index)
+{
+    return settings_get_red_team_enabled() 
+        ? menu_items[index].title_attack 
+        : menu_items[index].title_test;
+}
 
 #define MENU_ITEM_COUNT (sizeof(menu_items) / sizeof(menu_items[0]))
 #define VISIBLE_ITEMS 6
@@ -63,7 +73,7 @@ static void draw_screen(screen_t *self)
     
     for (int i = data->scroll_offset; i < visible_end; i++) {
         int row = (i - data->scroll_offset) + 1;
-        ui_draw_menu_item(row, menu_items[i].title, i == data->selected_index, false, false);
+        ui_draw_menu_item(row, get_menu_title(i), i == data->selected_index, false, false);
     }
     
     // Scroll indicators
@@ -84,11 +94,11 @@ static void redraw_two_items(home_screen_data_t *data, int old_index, int new_in
     // Only redraw if visible
     if (old_index >= data->scroll_offset && old_index < data->scroll_offset + VISIBLE_ITEMS) {
         int old_row = (old_index - data->scroll_offset) + 1;
-        ui_draw_menu_item(old_row, menu_items[old_index].title, false, false, false);
+        ui_draw_menu_item(old_row, get_menu_title(old_index), false, false, false);
     }
     if (new_index >= data->scroll_offset && new_index < data->scroll_offset + VISIBLE_ITEMS) {
         int new_row = (new_index - data->scroll_offset) + 1;
-        ui_draw_menu_item(new_row, menu_items[new_index].title, true, false, false);
+        ui_draw_menu_item(new_row, get_menu_title(new_index), true, false, false);
     }
 }
 

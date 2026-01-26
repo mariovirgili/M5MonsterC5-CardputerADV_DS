@@ -6,6 +6,7 @@
 #include "network_attacks_screen.h"
 #include "wifi_connect_screen.h"
 #include "arp_hosts_screen.h"
+#include "settings.h"
 #include "uart_handler.h"
 #include "text_ui.h"
 #include "esp_log.h"
@@ -17,11 +18,12 @@ static const char *TAG = "NET_ATTACKS";
 // Menu indices
 #define MENU_WIFI      0
 #define MENU_ARP       1
-#define MENU_ITEM_COUNT 2
 
 // Screen user data
 typedef struct {
     int selected_index;
+    int menu_count;    // 1 when red_team disabled, 2 when enabled
+    bool show_arp;     // Whether ARP Poisoning is visible
 } network_attacks_data_t;
 
 static const char* get_wifi_menu_text(void)
@@ -35,12 +37,16 @@ static void draw_screen(screen_t *self)
     
     ui_clear();
     
-    // Draw title
-    ui_draw_title("Network Attacks");
+    // Draw title - use "Tests" when red team disabled
+    ui_draw_title(settings_get_red_team_enabled() ? "Network Attacks" : "Network Tests");
     
     // Draw menu items
     ui_draw_menu_item(1, get_wifi_menu_text(), data->selected_index == MENU_WIFI, false, false);
-    ui_draw_menu_item(2, "ARP Poisoning", data->selected_index == MENU_ARP, false, false);
+    
+    // Only show ARP Poisoning if red team enabled
+    if (data->show_arp) {
+        ui_draw_menu_item(2, "ARP Poisoning", data->selected_index == MENU_ARP, false, false);
+    }
     
     // Draw status bar
     ui_draw_status("UP/DOWN:Navigate ENTER:Select ESC:Back");
@@ -52,8 +58,13 @@ static void redraw_selection(network_attacks_data_t *data, int old_index, int ne
     const char *old_text = (old_index == MENU_WIFI) ? get_wifi_menu_text() : "ARP Poisoning";
     const char *new_text = (new_index == MENU_WIFI) ? get_wifi_menu_text() : "ARP Poisoning";
     
-    ui_draw_menu_item(old_index + 1, old_text, false, false, false);
-    ui_draw_menu_item(new_index + 1, new_text, true, false, false);
+    // Only redraw if indices are valid for current menu
+    if (old_index < data->menu_count) {
+        ui_draw_menu_item(old_index + 1, old_text, false, false, false);
+    }
+    if (new_index < data->menu_count) {
+        ui_draw_menu_item(new_index + 1, new_text, true, false, false);
+    }
 }
 
 static void on_key(screen_t *self, key_code_t key)
@@ -70,7 +81,7 @@ static void on_key(screen_t *self, key_code_t key)
             break;
             
         case KEY_DOWN:
-            if (data->selected_index < MENU_ITEM_COUNT - 1) {
+            if (data->selected_index < data->menu_count - 1) {
                 int old = data->selected_index;
                 data->selected_index++;
                 redraw_selection(data, old, data->selected_index);
@@ -90,8 +101,8 @@ static void on_key(screen_t *self, key_code_t key)
                     // Connect - push WiFi connect screen
                     screen_manager_push(wifi_connect_screen_create, NULL);
                 }
-            } else if (data->selected_index == MENU_ARP) {
-                // ARP Poisoning - push hosts screen
+            } else if (data->selected_index == MENU_ARP && data->show_arp) {
+                // ARP Poisoning - push hosts screen (only if visible)
                 screen_manager_push(arp_hosts_screen_create, NULL);
             }
             break;
@@ -135,6 +146,13 @@ screen_t* network_attacks_screen_create(void *params)
         free(screen);
         return NULL;
     }
+    
+    // Configure menu based on red team setting
+    bool red_team = settings_get_red_team_enabled();
+    data->show_arp = red_team;
+    data->menu_count = red_team ? 2 : 1;  // Only WiFi when red team disabled
+    
+    ESP_LOGI(TAG, "Network menu: show_arp=%d, menu_count=%d", data->show_arp, data->menu_count);
     
     screen->user_data = data;
     screen->on_key = on_key;
