@@ -342,7 +342,7 @@ jobs:
           BUILD_TAG: ${{ steps.meta.outputs.tag }}
         run: |
           set -euo pipefail
-          python -c "import os, json; from pathlib import Path; version=os.getenv('FW_VERSION') or os.getenv('BUILD_TAG'); build=os.getenv('BUILD_TAG','manual'); base={'version':version,'build':build,'chipFamily':'ESP32-S3'}; adv={'name':'M5MonsterC5-CardputerADV ESP32-S3 (ADV)','parts':[{'path':'firmware/adv/bootloader.bin','offset':8192},{'path':'firmware/adv/partition-table.bin','offset':32768},{'path':'firmware/adv/M5MonsterC5-CardputerADV.bin','offset':65536}]}; k132={'name':'M5MonsterC5-CardputerADV ESP32-S3 (K132)','parts':[{'path':'firmware/k132/bootloader.bin','offset':8192},{'path':'firmware/k132/partition-table.bin','offset':32768},{'path':'firmware/k132/M5MonsterC5-CardputerADV.bin','offset':65536}]}; Path('docs/manifest.json').write_text(json.dumps({**base, **adv}, indent=2)); Path('docs/manifest_k132.json').write_text(json.dumps({**base, **k132}, indent=2))"
+          python -c "import os, json; from pathlib import Path; version=os.getenv('FW_VERSION') or os.getenv('BUILD_TAG'); build=os.getenv('BUILD_TAG','manual'); base={'version':version,'build':build,'chipFamily':'ESP32-S3'}; adv={'name':'M5MonsterC5-CardputerADV ESP32-S3 (ADV)','parts':[{'path':'firmware/adv/bootloader.bin','offset':0},{'path':'firmware/adv/partition-table.bin','offset':32768},{'path':'firmware/adv/M5MonsterC5-CardputerADV.bin','offset':65536}]}; k132={'name':'M5MonsterC5-CardputerADV ESP32-S3 (K132)','parts':[{'path':'firmware/k132/bootloader.bin','offset':0},{'path':'firmware/k132/partition-table.bin','offset':32768},{'path':'firmware/k132/M5MonsterC5-CardputerADV.bin','offset':65536}]}; Path('docs/manifest.json').write_text(json.dumps({**base, **adv}, indent=2)); Path('docs/manifest_k132.json').write_text(json.dumps({**base, **k132}, indent=2))"
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -363,7 +363,7 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.GIT_BUILD }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FW_VERSION: ${{ needs.package.outputs.fw_version }}
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || format('v{0}', needs.firmware.outputs.fw_version) }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || format('v{0}', needs.package.outputs.fw_version) }}
           REPO: ${{ github.repository }}
           PAGES_URL: ${{ needs.pages.outputs.page_url || format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}
         run: |
