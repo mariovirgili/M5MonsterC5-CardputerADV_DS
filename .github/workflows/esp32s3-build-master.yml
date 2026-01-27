@@ -225,45 +225,12 @@ jobs:
             zip -9 "$out" "${files[@]}"
           done
 
-      - name: Delete existing assets (rebuild)
-        if: github.event_name == 'workflow_dispatch' && inputs.rebuild_release == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.meta.outputs.tag }}
-        run: |
-          set -euo pipefail
-          assets=(
-            "flash_board.py"
-            "bootloader-adv.bin"
-            "partition-table-adv.bin"
-            "M5MonsterC5-CardputerADV-adv-full.bin"
-            "M5MonsterC5-CardputerADV-adv-full-${{ needs.package.outputs.fw_version }}.bin"
-            "M5MonsterC5-CardputerADV-adv.bin"
-            "M5MonsterC5-CardputerADV-adv-${{ needs.package.outputs.fw_version }}.bin"
-            "M5MonsterC5-CardputerADV-adv-launcher.bin"
-            "M5MonsterC5-CardputerADV-adv-launcher-${{ needs.package.outputs.fw_version }}.bin"
-            "M5MonsterC5-CardputerADV-adv-${{ needs.package.outputs.fw_version }}.zip"
-            "bootloader-k132.bin"
-            "partition-table-k132.bin"
-            "M5MonsterC5-CardputerADV-k132-full.bin"
-            "M5MonsterC5-CardputerADV-k132-full-${{ needs.package.outputs.fw_version }}.bin"
-            "M5MonsterC5-CardputerADV-k132.bin"
-            "M5MonsterC5-CardputerADV-k132-${{ needs.package.outputs.fw_version }}.bin"
-            "M5MonsterC5-CardputerADV-k132-launcher.bin"
-            "M5MonsterC5-CardputerADV-k132-launcher-${{ needs.package.outputs.fw_version }}.bin"
-            "M5MonsterC5-CardputerADV-k132-${{ needs.package.outputs.fw_version }}.zip"
-          )
-          for name in "${assets[@]}"; do
-            if gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json assets --jq ".assets[].name" | grep -qx "$name"; then
-              gh release delete-asset "$TAG" "$name" -R "$GITHUB_REPOSITORY" -y
-            fi
-          done
-
       - name: Upload binaries to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           name: ${{ format('M5MonsterC5-CardputerADV {0}', needs.package.outputs.fw_version) }}
+          overwrite: true
           files: |
             release_artifacts/firmware/flash_board.py
             release_artifacts/firmware/adv/bootloader-adv.bin
