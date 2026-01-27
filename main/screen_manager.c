@@ -7,6 +7,8 @@
 #include "text_ui.h"
 #include "screenshot.h"
 #include "esp_log.h"
+#include "esp_system.h"
+#include "esp_heap_caps.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -91,7 +93,10 @@ esp_err_t screen_manager_push(screen_create_fn create_fn, void *params)
     // Push onto stack
     screen_stack[stack_depth++] = new_screen;
     
-    ESP_LOGI(TAG, "Pushed screen, depth now: %d", stack_depth);
+    ESP_LOGI(TAG, "Pushed screen, depth: %d, Internal: %luKB, DMA: %luKB",
+             stack_depth,
+             (unsigned long)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+             (unsigned long)(heap_caps_get_free_size(MALLOC_CAP_DMA) / 1024));
     return ESP_OK;
 }
 
@@ -126,7 +131,10 @@ esp_err_t screen_manager_pop(void)
         }
     }
     
-    ESP_LOGI(TAG, "Popped screen, depth now: %d", stack_depth);
+    ESP_LOGI(TAG, "Popped screen, depth: %d, Internal: %luKB, DMA: %luKB",
+             stack_depth,
+             (unsigned long)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+             (unsigned long)(heap_caps_get_free_size(MALLOC_CAP_DMA) / 1024));
     return ESP_OK;
 }
 
@@ -158,7 +166,10 @@ esp_err_t screen_manager_replace(screen_create_fn create_fn, void *params)
     // Replace on stack
     screen_stack[stack_depth - 1] = new_screen;
     
-    ESP_LOGI(TAG, "Replaced screen at depth: %d", stack_depth);
+    ESP_LOGI(TAG, "Replaced screen, depth: %d, Internal: %luKB, DMA: %luKB",
+             stack_depth,
+             (unsigned long)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+             (unsigned long)(heap_caps_get_free_size(MALLOC_CAP_DMA) / 1024));
     return ESP_OK;
 }
 

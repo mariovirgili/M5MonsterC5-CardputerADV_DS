@@ -6,6 +6,8 @@
 #include "uart_handler.h"
 #include "settings.h"
 #include "esp_log.h"
+#include "esp_system.h"
+#include "esp_heap_caps.h"
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -36,9 +38,24 @@ static SemaphoreHandle_t uart_mutex = NULL;
 // WiFi client connection state
 static bool wifi_connected = false;
 
+// Board ping detection state
+static volatile bool pong_received = false;
+
 // Line buffer
 static char line_buffer[1024];
 static int line_pos = 0;
+
+/**
+ * @brief Log current memory info
+ */
+static void log_memory_info(const char *context)
+{
+    ESP_LOGI(TAG, "[MEM %s] Internal: %luKB, DMA: %luKB, Total: %luKB",
+             context,
+             (unsigned long)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+             (unsigned long)(heap_caps_get_free_size(MALLOC_CAP_DMA) / 1024),
+             (unsigned long)(esp_get_free_heap_size() / 1024));
+}
 
 /**
  * @brief Parse a CSV network line
@@ -107,7 +124,7 @@ static bool parse_network_line(const char *line, wifi_network_t *network)
  */
 static void process_line(const char *line)
 {
-    ESP_LOGD(TAG, "RX: %s", line);
+    ESP_LOGI(TAG, "RX: %s", line);
 
     // Call line callback if registered
     if (line_callback) {
@@ -239,6 +256,7 @@ esp_err_t uart_send_command(const char *cmd)
     xSemaphoreTake(uart_mutex, portMAX_DELAY);
     
     ESP_LOGI(TAG, "TX: %s", cmd);
+    log_memory_info("TX Command");
     
     int len = strlen(cmd);
     int written = uart_write_bytes(UART_PORT_NUM, cmd, len);
@@ -312,5 +330,51 @@ void uart_set_wifi_connected(bool connected)
     wifi_connected = connected;
 }
 
+/**
+ * @brief Callback to detect pong response
+ */
+static void ping_response_callback(const char *line, void *user_data)
+{
+    (void)user_data;
+    if (strcmp(line, "pong") == 0) {
+        pong_received = true;
+        ESP_LOGI(TAG, "Pong received - board detected");
+    }
+}
 
-
+bool uart_check_board_ping(int timeout_ms)
+{
+    ESP_LOGI(TAG, "Checking board connection (ping)...");
+    
+    // Reset pong flag
+    pong_received = false;
+    
+    // Register our callback temporarily
+    uart_response_callback_t old_callback = line_callback;
+    void *old_user_data = line_callback_user_data;
+    
+    uart_register_line_callback(ping_response_callback, NULL);
+    
+    // Send ping command
+    uart_send_command("ping");
+    
+    // Wait for pong with timeout
+    int elapsed = 0;
+    const int check_interval = 10;  // Check every 10ms
+    
+    while (elapsed < timeout_ms && !pong_received) {
+        vTaskDelay(pdMS_TO_TICKS(check_interval));
+        elapsed += check_interval;
+    }
+    
+    // Restore previous callback
+    uart_register_line_callback(old_callback, old_user_data);
+    
+    if (pong_received) {
+        ESP_LOGI(TAG, "Board detected successfully");
+    } else {
+        ESP_LOGW(TAG, "Board not detected (timeout after %dms)", timeout_ms);
+    }
+    
+    return pong_received;
+}
