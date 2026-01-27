@@ -6,6 +6,8 @@
 #include "uart_handler.h"
 #include "settings.h"
 #include "esp_log.h"
+#include "esp_system.h"
+#include "esp_heap_caps.h"
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -42,6 +44,18 @@ static volatile bool pong_received = false;
 // Line buffer
 static char line_buffer[1024];
 static int line_pos = 0;
+
+/**
+ * @brief Log current memory info
+ */
+static void log_memory_info(const char *context)
+{
+    ESP_LOGI(TAG, "[MEM %s] Internal: %luKB, DMA: %luKB, Total: %luKB",
+             context,
+             (unsigned long)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+             (unsigned long)(heap_caps_get_free_size(MALLOC_CAP_DMA) / 1024),
+             (unsigned long)(esp_get_free_heap_size() / 1024));
+}
 
 /**
  * @brief Parse a CSV network line
@@ -110,7 +124,7 @@ static bool parse_network_line(const char *line, wifi_network_t *network)
  */
 static void process_line(const char *line)
 {
-    ESP_LOGD(TAG, "RX: %s", line);
+    ESP_LOGI(TAG, "RX: %s", line);
 
     // Call line callback if registered
     if (line_callback) {
@@ -242,6 +256,7 @@ esp_err_t uart_send_command(const char *cmd)
     xSemaphoreTake(uart_mutex, portMAX_DELAY);
     
     ESP_LOGI(TAG, "TX: %s", cmd);
+    log_memory_info("TX Command");
     
     int len = strlen(cmd);
     int written = uart_write_bytes(UART_PORT_NUM, cmd, len);
