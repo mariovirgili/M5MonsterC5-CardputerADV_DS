@@ -4,6 +4,7 @@
  */
 
 #include "gps_module_screen.h"
+#include "gps_raw_screen.h"
 #include "uart_handler.h"
 #include "text_ui.h"
 #include "keyboard.h"
@@ -23,6 +24,9 @@ static const char *options[] = {
 #define OPTION_ATGM 0
 #define OPTION_M5   1
 #define OPTION_COUNT 2
+
+#define MENU_GPS_READ 2
+#define MENU_ITEM_COUNT 3
 
 // Screen user data
 typedef struct {
@@ -96,9 +100,11 @@ static void draw_screen(screen_t *self)
         for (int i = 0; i < OPTION_COUNT; i++) {
             bool is_selected = (i == data->selected_index);
             bool is_current = (i == data->current_option);
-
+            
             ui_draw_menu_item(i + 1, options[i], is_selected, true, is_current);
         }
+
+        ui_draw_menu_item(MENU_GPS_READ + 1, "GPS Read", data->selected_index == MENU_GPS_READ, false, false);
 
         // Show status message
         if (data->status_msg[0]) {
@@ -136,7 +142,7 @@ static void on_key(screen_t *self, key_code_t key)
             break;
 
         case KEY_DOWN:
-            if (data->selected_index < OPTION_COUNT - 1) {
+            if (data->selected_index < MENU_ITEM_COUNT - 1) {
                 data->selected_index++;
                 data->saved = false;
                 data->status_msg[0] = '\0';
@@ -147,16 +153,21 @@ static void on_key(screen_t *self, key_code_t key)
         case KEY_ENTER:
         case KEY_SPACE:
             {
-                const char *cmd = (data->selected_index == OPTION_ATGM) ? "gps_set atgm" : "gps_set m5";
-                ESP_LOGI(TAG, "Sending: %s", cmd);
-
-                esp_err_t ret = uart_send_command(cmd);
-                if (ret == ESP_OK) {
-                    data->current_option = data->selected_index;
-                    data->saved = true;
-                    data->status_msg[0] = '\0';
+                if (data->selected_index == MENU_GPS_READ) {
+                    screen_manager_push(gps_raw_screen_create, NULL);
+                    return;
                 } else {
-                    snprintf(data->status_msg, sizeof(data->status_msg), "Send failed!");
+                    const char *cmd = (data->selected_index == OPTION_ATGM) ? "gps_set atgm" : "gps_set m5";
+                    ESP_LOGI(TAG, "Sending: %s", cmd);
+                    
+                    esp_err_t ret = uart_send_command(cmd);
+                    if (ret == ESP_OK) {
+                        data->current_option = data->selected_index;
+                        data->saved = true;
+                        data->status_msg[0] = '\0';
+                    } else {
+                        snprintf(data->status_msg, sizeof(data->status_msg), "Send failed!");
+                    }
                 }
                 draw_screen(self);
             }
