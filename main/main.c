@@ -30,18 +30,23 @@
 static const char *TAG = "MAIN";
 
 static volatile bool board_sd_missing = false;
+static volatile bool board_sd_check_pending = false;
+static int64_t board_sd_check_start_ms = 0;
+static bool board_sd_popup_shown = false;
 
-static void uart_boot_line_callback(const char *line, void *user_data)
+static void uart_sd_check_line_callback(const char *line, void *user_data)
 {
     (void)user_data;
-    if (!line || board_sd_missing) {
+    if (!line || board_sd_missing || !board_sd_check_pending) {
         return;
     }
 
-    if (strstr(line, "SD Card not detected") != NULL ||
-        strstr(line, "SD card not detected") != NULL ||
-        strstr(line, "SD card not available") != NULL) {
+    if (strstr(line, "Failed to initialize SD card") != NULL ||
+        strstr(line, "ESP_ERR_INVALID_RESPONSE") != NULL ||
+        strstr(line, "Make sure SD card is properly inserted.") != NULL ||
+        strstr(line, "Command returned non-zero error code") != NULL) {
         board_sd_missing = true;
+        board_sd_check_pending = false;
     }
 }
 
@@ -126,7 +131,7 @@ void app_main(void)
         return;
     }
     ESP_LOGI(TAG, "UART handler initialized successfully");
-    uart_register_monitor_callback(uart_boot_line_callback, NULL);
+    uart_register_monitor_callback(uart_sd_check_line_callback, NULL);
 
     // Board detection - check if ESP32C5 board is connected
     ESP_LOGI(TAG, "Checking for ESP32C5 board...");
@@ -168,6 +173,10 @@ void app_main(void)
     
     if (board_detected) {
         ESP_LOGI(TAG, "ESP32C5 board detected");
+        ESP_LOGI(TAG, "Checking Monster SD card via list_sd...");
+        board_sd_check_pending = true;
+        board_sd_check_start_ms = esp_timer_get_time() / 1000;
+        uart_send_command("list_sd");
     } else {
         ESP_LOGW(TAG, "Continuing without board detection");
     }
@@ -215,28 +224,36 @@ void app_main(void)
             }
         }
 
-        // SD card missing: block app and show warning
-        if (board_sd_missing) {
-            ESP_LOGW(TAG, "Board SD card not detected, showing blocking popup...");
+        // SD card missing: show warning and allow ESC to continue
+        if (board_sd_missing && !board_sd_popup_shown) {
+            ESP_LOGW(TAG, "Board SD card not detected, showing popup...");
             display_set_backlight(100);
-            // Disable screen input so menu can't redraw under the popup
-            keyboard_register_callback(NULL);
-            while (keyboard_get_key() != KEY_NONE) {
-                // Drain pending keys
-            }
             ui_clear();
-            ui_show_message("Warning",
+            ui_show_message_tall("Warning",
                             "SD missing in MonsterC5\n"
-                            "Insert SD and Off/On");
+                            "Insert SD and Off/On\n"
+                            "Press Esc to skip\n"
+                            "Some functions limited");
             display_flush();
 
-            // Halt app until power cycle
-            while (1) {
+            // Block until ESC, then continue
+            while (true) {
                 keyboard_process();
-                while (keyboard_get_key() != KEY_NONE) {
-                    // Drain keys while blocked
+                if (keyboard_get_key() == KEY_ESC) {
+                    break;
                 }
                 vTaskDelay(pdMS_TO_TICKS(100));
+            }
+            ui_clear();
+            screen_manager_redraw();
+            board_sd_popup_shown = true;
+        }
+
+        // Stop listening for SD check after a short timeout
+        if (board_sd_check_pending) {
+            int64_t now_ms = esp_timer_get_time() / 1000;
+            if ((now_ms - board_sd_check_start_ms) > 3000) {
+                board_sd_check_pending = false;
             }
         }
         
