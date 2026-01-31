@@ -1,41 +1,69 @@
 /**
  * @file display.h
- * @brief Display driver for External ILI9341 via HSPI (320x240)
+ * @brief Display Driver Header with Kconfig Switch
  */
 
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
+#include "sdkconfig.h" // Important: load menuconfig settings
 #include "esp_err.h"
 #include <stdint.h>
 #include <stdbool.h>
 
-// Display Configuration (External ILI9341)
-#define DISPLAY_WIDTH       320
-#define DISPLAY_HEIGHT      240
+typedef enum {
+    DISPLAY_INTERNAL = 0,
+    DISPLAY_EXTERNAL = 1
+} display_target_t;
 
-// Offset for generic ILI9341 (usually 0,0)
-#define DISPLAY_OFFSET_X    0
-#define DISPLAY_OFFSET_Y    0
+// --- INTERNAL Display (Always present) ---
+#define INT_DISPLAY_WIDTH       240
+#define INT_DISPLAY_HEIGHT      135
+#define INT_DISPLAY_OFFSET_X    40
+#define INT_DISPLAY_OFFSET_Y    53
+#define INT_PIN_SCLK            36
+#define INT_PIN_MOSI            35
+#define INT_PIN_DC              34
+#define INT_PIN_CS              37
+#define INT_PIN_RST             33
+#define INT_PIN_BL              38
+#define INT_SPI_HOST            SPI2_HOST
+#define INT_SPI_FREQ            40000000
 
-// --- External Pins Cardputer-Adv Configuration ---
-#define DISPLAY_PIN_SCLK    15
-#define DISPLAY_PIN_MOSI    13
-#define DISPLAY_PIN_DC      6
-#define DISPLAY_PIN_CS      5
-#define DISPLAY_PIN_RST     3
+// --- EXTERNAL Display (Only if enabled in menuconfig) ---
+#ifdef CONFIG_CARDPUTER_DUAL_DISPLAY
+    #define EXT_DISPLAY_WIDTH       320
+    #define EXT_DISPLAY_HEIGHT      240
+    #define EXT_DISPLAY_OFFSET_X    0
+    #define EXT_DISPLAY_OFFSET_Y    0
+    #define EXT_PIN_SCLK            15
+    #define EXT_PIN_MOSI            13
+    #define EXT_PIN_DC              6
+    #define EXT_PIN_CS              5
+    #define EXT_PIN_RST             3
+    #define EXT_PIN_BL              -1 
+    #define EXT_SPI_HOST            SPI3_HOST
+    #define EXT_SPI_FREQ            80000000 
+#else
+    // Fallback definitions if External is disabled
+    // (Redirect to internal dimensions/pins just in case)
+    #define EXT_DISPLAY_WIDTH       INT_DISPLAY_WIDTH
+    #define EXT_DISPLAY_HEIGHT      INT_DISPLAY_HEIGHT
+#endif
 
-// Backlight - Set to -1 if not used or hardwired to VCC
-#define DISPLAY_PIN_BL      -1 
+// --- MACROS (Generic API Target) ---
+#ifdef CONFIG_CARDPUTER_DUAL_DISPLAY
+    // Standard apps target the Big Screen
+    #define DISPLAY_WIDTH           EXT_DISPLAY_WIDTH
+    #define DISPLAY_HEIGHT          EXT_DISPLAY_HEIGHT
+#else
+    // Standard apps are forced to the Small Screen
+    #define DISPLAY_WIDTH           INT_DISPLAY_WIDTH
+    #define DISPLAY_HEIGHT          INT_DISPLAY_HEIGHT
+#endif
 
-// SPI Configuration - Using SPI3_HOST (HSPI)
-#define DISPLAY_SPI_HOST    SPI3_HOST
-#define DISPLAY_SPI_FREQ    80000000  // 40MHz
-
-// RGB565 color helpers
+// RGB565 Helper & Colors
 #define RGB565(r, g, b) ((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | (((b) & 0xF8) >> 3))
-
-// Common colors (RGB565)
 #define COLOR_BLACK     0x0000
 #define COLOR_WHITE     0xFFFF
 #define COLOR_RED       0xF800
@@ -48,79 +76,25 @@
 #define COLOR_GRAY      0x8410
 #define COLOR_DARK_GRAY 0x2104
 
-/**
- * @brief Initialize the display
- * @return ESP_OK on success, ESP_FAIL otherwise
- */
+// --- Init ---
 esp_err_t display_init(void);
 
-/**
- * @brief Draw a filled rectangle
- * @param x X coordinate
- * @param y Y coordinate
- * @param w Width
- * @param h Height
- * @param color RGB565 color
- */
+// --- Standard API ---
 void display_fill_rect(int x, int y, int w, int h, uint16_t color);
-
-/**
- * @brief Draw a single pixel
- * @param x X coordinate
- * @param y Y coordinate
- * @param color RGB565 color
- */
 void display_draw_pixel(int x, int y, uint16_t color);
-
-/**
- * @brief Draw a horizontal line
- * @param x X start
- * @param y Y coordinate
- * @param w Width
- * @param color RGB565 color
- */
 void display_draw_hline(int x, int y, int w, uint16_t color);
-
-/**
- * @brief Draw a vertical line
- * @param x X coordinate
- * @param y Y start
- * @param h Height
- * @param color RGB565 color
- */
 void display_draw_vline(int x, int y, int h, uint16_t color);
-
-/**
- * @brief Draw a rectangle outline
- * @param x X coordinate
- * @param y Y coordinate
- * @param w Width
- * @param h Height
- * @param color RGB565 color
- */
 void display_draw_rect(int x, int y, int w, int h, uint16_t color);
-
-/**
- * @brief Clear the entire screen
- * @param color RGB565 color
- */
 void display_clear(uint16_t color);
 
-/**
- * @brief Set backlight brightness
- * @param brightness 0-100 percentage
- */
+// --- INTERNAL Specific API ---
+void display_fill_rect_int(int x, int y, int w, int h, uint16_t color);
+void display_draw_pixel_int(int x, int y, uint16_t color);
+void display_clear_target(display_target_t target, uint16_t color);
+
+// --- Utils ---
 void display_set_backlight(uint8_t brightness);
-
-/**
- * @brief Flush display buffer to screen (for buffered mode)
- */
 void display_flush(void);
-
-/**
- * @brief Get pointer to framebuffer for screenshot functionality
- * @return Pointer to RGB565 framebuffer (320x240 pixels)
- */
 const uint16_t* display_get_framebuffer(void);
 
 #endif // DISPLAY_H

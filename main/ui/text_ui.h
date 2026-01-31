@@ -139,6 +139,13 @@ void ui_draw_box(int x, int y, int w, int h, uint16_t color);
 void ui_show_message(const char *title, const char *message);
 void ui_show_message_tall(const char *title, const char *message);
 
+// --- Internal Display UI Functions ---
+void ui_clear_int(void);
+void ui_draw_title_int(const char *title);
+void ui_draw_status_int(const char *status);
+void ui_draw_menu_item_int(int row, const char *text, bool selected);
+void ui_print_int(int col, int row, const char *text, uint16_t fg);
+
 #endif // TEXT_UI_H
 
 

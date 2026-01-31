@@ -405,5 +405,110 @@ void ui_show_message_tall(const char *title, const char *message)
     ui_show_message_impl(title, message, 96);
 }
 
+// --- Internal Display UI Implementation ---
 
+void ui_clear_int(void)
+{
+    display_clear_target(DISPLAY_INTERNAL, UI_COLOR_BG);
+}
+
+// Helper to draw char on internal screen
+static void ui_draw_char_int(int x, int y, char c, uint16_t fg, uint16_t bg)
+{
+    if (x < 0 || y < 0 || x + FONT_WIDTH > INT_DISPLAY_WIDTH || y + FONT_HEIGHT > INT_DISPLAY_HEIGHT) return;
+    
+    if (c < FONT_FIRST_CHAR || c > FONT_LAST_CHAR) c = ' ';
+    
+    int char_index = c - FONT_FIRST_CHAR;
+    const uint8_t *char_data = &font8x16_data[char_index * FONT_HEIGHT];
+    
+    // Draw background
+    display_fill_rect_int(x, y, FONT_WIDTH, FONT_HEIGHT, bg);
+    
+    // Draw pixels
+    for (int row = 0; row < FONT_HEIGHT; row++) {
+        uint8_t row_data = char_data[row];
+        for (int col = 0; col < FONT_WIDTH; col++) {
+            if (row_data & (0x80 >> col)) {
+                display_draw_pixel_int(x + col, y + row, fg);
+            }
+        }
+    }
+}
+
+static void ui_draw_text_int(int x, int y, const char *text, uint16_t fg, uint16_t bg)
+{
+    if (!text) return;
+    int start_x = x;
+    while (*text) {
+        if (*text == '\n') {
+            x = start_x;
+            y += FONT_HEIGHT;
+        } else {
+            ui_draw_char_int(x, y, *text, fg, bg);
+            x += FONT_WIDTH;
+        }
+        text++;
+    }
+}
+
+void ui_print_int(int col, int row, const char *text, uint16_t fg)
+{
+    // Internal screen is smaller (240px wide = 30 chars)
+    ui_draw_text_int(col * FONT_WIDTH, row * FONT_HEIGHT, text, fg, UI_COLOR_BG);
+}
+
+void ui_draw_title_int(const char *title)
+{
+    // Simple title for small screen
+    display_fill_rect_int(0, 0, INT_DISPLAY_WIDTH, FONT_HEIGHT + 2, RGB565(0, 60, 30));
+    if (title) {
+        int len = strlen(title);
+        int x = (INT_DISPLAY_WIDTH - len * FONT_WIDTH) / 2;
+        ui_draw_text_int(x, 1, title, UI_COLOR_TITLE, RGB565(0, 60, 30));
+    }
+    // Horizontal line
+    display_fill_rect_int(0, FONT_HEIGHT + 2, INT_DISPLAY_WIDTH, 1, UI_COLOR_BORDER);
+}
+
+void ui_draw_status_int(const char *status)
+{
+    // Height of the status bar: Font (16) + Padding (2) = 18 pixels
+    int bar_height = FONT_HEIGHT + 2;
+    int y = INT_DISPLAY_HEIGHT - bar_height;
+    
+    // 1. Draw Background
+    display_fill_rect_int(0, y, INT_DISPLAY_WIDTH, bar_height, RGB565(0, 40, 20));
+    
+    // 2. Draw Top Line
+    display_fill_rect_int(0, y, INT_DISPLAY_WIDTH, 1, UI_COLOR_BORDER);
+    
+    // 3. Draw Text
+    if (status) {
+        ui_draw_text_int(4, y + 1, status, UI_COLOR_DIMMED, RGB565(0, 40, 20));
+    }
+
+    // 4. Draw Bottom Line (Explicitly closing the box)
+    // We draw a 1px line at the very bottom of the screen
+    display_fill_rect_int(0, INT_DISPLAY_HEIGHT - 1, INT_DISPLAY_WIDTH, 1, UI_COLOR_BORDER);
+}
+
+void ui_draw_menu_item_int(int row, const char *text, bool selected)
+{
+    int y = row * FONT_HEIGHT;
+    uint16_t bg = selected ? UI_COLOR_SELECTED : UI_COLOR_BG;
+    uint16_t fg = selected ? UI_COLOR_HIGHLIGHT : UI_COLOR_TEXT;
+    
+    // Background
+    display_fill_rect_int(0, y, INT_DISPLAY_WIDTH, FONT_HEIGHT, bg);
+    
+    // Selection marker
+    if (selected) {
+        display_fill_rect_int(0, y, 2, FONT_HEIGHT, UI_COLOR_HIGHLIGHT);
+    }
+    
+    if (text) {
+        ui_draw_text_int(4, y, text, fg, bg);
+    }
+}
 

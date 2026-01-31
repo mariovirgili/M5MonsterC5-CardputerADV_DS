@@ -1,0 +1,11 @@
+menu "Cardputer Advanced Display"
+
+    config CARDPUTER_DUAL_DISPLAY
+        bool "Enable External ILI9341 Display (Dual Screen)"
+        default y
+        help
+            If enabled, the Main Menu will be shown on the internal ST7789 screen,
+            and Apps/Tools will be shown on the external ILI9341 screen.
+            If disabled, everything will be shown on the internal screen.
+
+endmenu
