@@ -17,6 +17,12 @@
 //Target board: adv or k132
 BOARD:STRING=adv
 
+//No help, variable specified on the command line.
+CCACHE_ENABLE:UNINITIALIZED=True
+
+//Path to a program.
+CCACHE_FOUND:FILEPATH=C:/Users/user/.espressif/tools/ccache/4.12.1/ccache-4.12.1-windows-x86_64/ccache.exe
+
 //Path to a program.
 CMAKE_ADDR2LINE:FILEPATH=C:/Users/user/.espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32s3-elf-addr2line.exe
 
@@ -367,6 +373,9 @@ Mbed TLS_IS_TOP_LEVEL:STATIC=OFF
 
 //Value Computed by CMake
 Mbed TLS_SOURCE_DIR:STATIC=C:/Users/user/esp/v6.0/esp-idf/components/mbedtls/mbedtls
+
+//No help, variable specified on the command line.
+PYTHON:UNINITIALIZED=C:\Users\user\.espressif\python_env\idf6.0_py3.11_env\Scripts\python.exe
 
 //No help, variable specified on the command line.
 PYTHON_DEPS_CHECKED:UNINITIALIZED=1

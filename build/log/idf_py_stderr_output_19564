@@ -1,0 +1,32 @@
+Command: cmake -G Ninja -B D:\CardputerADV\Compile\M5MonsterC5-CardputerADV_DS\build -DPYTHON_DEPS_CHECKED=1 -DPYTHON=C:\Users\user\.espressif\python_env\idf6.0_py3.11_env\Scripts\python.exe -DESP_PLATFORM=1 -DSDKCONFIG='d:\CardputerADV\Compile\M5MonsterC5-CardputerADV_DS\sdkconfig' -DCCACHE_ENABLE=True D:\CardputerADV\Compile\M5MonsterC5-CardputerADV_DS
+info: Default value for PM_SLEEP_FUNC_IN_IRAM in sdkconfig is y but it is n according to Kconfig.
+Using default value from sdkconfig (y).
+info: Default value for MBEDTLS_DHM_C in sdkconfig is y but it is n according to Kconfig.
+Using default value from sdkconfig (y).
+info: Default value for MBEDTLS_LARGE_KEY_SOFTWARE_MPI in sdkconfig is n but it is y according to Kconfig.
+Using default value from sdkconfig (n).
+Configuration Report                                                           
++-----------------------------------------------------------------------------+
+|  Parser Version: 1                                                          |
+|  Verbosity: default                                                         |
+|  Defaults policy: sdkconfig                                                 |
+|  Status: Finished with notifications                                        |
+|                                                                             |
+| Default Value Mismatch                                                      |
+| +-------------------------------------------------------------------------+ |
+| | Using sdkconfig default values                                       |  | |
+| | Choice symbols with different default selection between sdkconfig    |  | |
+| | and Kconfig                                                          |  | |
+| | MBEDTLS_COMPILER_OPTIMIZATION: Kconfig default selection:            |  | |
+| | MBEDTLS_COMPILER_OPTIMIZATION_SIZE, sdkconfig default selection:     |  | |
+| | MBEDTLS_COMPILER_OPTIMIZATION_NONE                                   |  | |
+| | LIBC: Kconfig default selection: LIBC_PICOLIBC, sdkconfig default    |  | |
+| | selection: LIBC_NEWLIB                                               |  | |
+| +-------------------------------------------------------------------------+ |
+| Disabled Symbols/Choices With User-Set Value                                |
+| +-------------------------------------------------------------------------+ |
+| | * IDF_TARGET (defined at C:/Users/user/esp/v6.0/esp-idf/Kconfig:68)     | |
+| | with user-set value esp32s3 from                                        | |
+| | C:\Users\user\AppData\Local\Temp\kconfgen_tmpmvx3rd5i                   | |
+| +-------------------------------------------------------------------------+ |
++-----------------------------------------------------------------------------+

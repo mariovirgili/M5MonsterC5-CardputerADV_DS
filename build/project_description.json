@@ -1,7 +1,7 @@
 {
     "version":            "1.3",
     "project_name":       "M5MonsterC5-CardputerADV",
-    "project_version":    "66c3960",
+    "project_version":    "db7aa05-dirty",
     "project_path":       "D:/CardputerADV/Compile/M5MonsterC5-CardputerADV_DS",
     "idf_path":           "C:/Users/user/esp/v6.0/esp-idf",
     "build_dir":          "D:/CardputerADV/Compile/M5MonsterC5-CardputerADV_DS/build",

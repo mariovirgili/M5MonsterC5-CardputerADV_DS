@@ -225,18 +225,31 @@ void ui_draw_title(const char *title)
 
 void ui_draw_status(const char *status)
 {
-    int y = DISPLAY_HEIGHT - FONT_HEIGHT - 2;
+    // Define total height: Font (16) + Top Padding (2) + Bottom Padding (2) = 20 pixels
+    int bar_height = FONT_HEIGHT + 4; 
     
-    // Draw status bar background
-    display_fill_rect(0, y, DISPLAY_WIDTH, FONT_HEIGHT + 2, RGB565(0, 40, 20));
-    
-    // Draw top line
+    // Calculate Y position.
+    // Logic: Screen Height (240) - Bar Height (20) - 1 Pixel Margin.
+    // Result: 240 - 20 - 1 = 219.
+    // The bar will be drawn from row 219 to row 238.
+    // This leaves EXACTLY row 239 (the last one) empty to avoid the glitch.
+    int y = DISPLAY_HEIGHT - bar_height - 1;
+
+    // 1. Draw Background
+    display_fill_rect(0, y, DISPLAY_WIDTH, bar_height, RGB565(0, 40, 20));
+
+    // 2. Draw Top Line (at Y start)
     display_draw_hline(0, y, DISPLAY_WIDTH, UI_COLOR_BORDER);
-    
-    // Draw status text
+
+    // 3. Draw Text
+    // Text is positioned at y + 2 (vertical center)
     if (status) {
-        ui_draw_text(4, y + 1, status, UI_COLOR_DIMMED, RGB565(0, 40, 20));
+        ui_draw_text(4, y + 2, status, UI_COLOR_DIMMED, RGB565(0, 40, 20));
     }
+
+    // 4. Explicitly Draw Bottom Line (at Y end)
+    // This ensures a solid border even if text rendering overlaps the background edge.
+    display_draw_hline(0, y + bar_height - 1, DISPLAY_WIDTH, UI_COLOR_BORDER);
 }
 
 void ui_draw_menu_item(int row, const char *text, bool selected, bool has_checkbox, bool checked)

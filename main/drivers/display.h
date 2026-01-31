@@ -1,6 +1,6 @@
 /**
  * @file display.h
- * @brief Simple display driver for Cardputer ST7789
+ * @brief Display driver for External ILI9341 via HSPI (320x240)
  */
 
 #ifndef DISPLAY_H
@@ -10,25 +10,27 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// Cardputer Display Configuration (ST7789 1.14" 240x135)
-#define DISPLAY_WIDTH       240
-#define DISPLAY_HEIGHT      135
+// Display Configuration (External ILI9341)
+#define DISPLAY_WIDTH       320
+#define DISPLAY_HEIGHT      240
 
-// Offset for ST7789 - adjusted for swap_xy=true, mirror(true,false)
-#define DISPLAY_OFFSET_X    40
-#define DISPLAY_OFFSET_Y    53
+// Offset for generic ILI9341 (usually 0,0)
+#define DISPLAY_OFFSET_X    0
+#define DISPLAY_OFFSET_Y    0
 
-// Cardputer ST7789 Pin Configuration
-#define DISPLAY_PIN_SCLK    36
-#define DISPLAY_PIN_MOSI    35
-#define DISPLAY_PIN_DC      34
-#define DISPLAY_PIN_CS      37
-#define DISPLAY_PIN_RST     33
-#define DISPLAY_PIN_BL      38
+// --- External Pins Cardputer-Adv Configuration ---
+#define DISPLAY_PIN_SCLK    15
+#define DISPLAY_PIN_MOSI    13
+#define DISPLAY_PIN_DC      6
+#define DISPLAY_PIN_CS      5
+#define DISPLAY_PIN_RST     3
 
-// SPI Configuration
-#define DISPLAY_SPI_HOST    SPI2_HOST
-#define DISPLAY_SPI_FREQ    80000000  // 80 MHz
+// Backlight - Set to -1 if not used or hardwired to VCC
+#define DISPLAY_PIN_BL      -1 
+
+// SPI Configuration - Using SPI3_HOST (HSPI)
+#define DISPLAY_SPI_HOST    SPI3_HOST
+#define DISPLAY_SPI_FREQ    80000000  // 40MHz
 
 // RGB565 color helpers
 #define RGB565(r, g, b) ((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | (((b) & 0xF8) >> 3))
@@ -117,7 +119,7 @@ void display_flush(void);
 
 /**
  * @brief Get pointer to framebuffer for screenshot functionality
- * @return Pointer to RGB565 framebuffer (240x135 pixels)
+ * @return Pointer to RGB565 framebuffer (320x240 pixels)
  */
 const uint16_t* display_get_framebuffer(void);
 
