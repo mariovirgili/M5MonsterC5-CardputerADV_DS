@@ -43,7 +43,7 @@ typedef enum {
     #define EXT_PIN_RST             3
     #define EXT_PIN_BL              -1 
     #define EXT_SPI_HOST            SPI3_HOST
-    #define EXT_SPI_FREQ            80000000 
+    #define EXT_SPI_FREQ            20000000 
 #else
     // Fallback definitions if External is disabled
     // (Redirect to internal dimensions/pins just in case)
