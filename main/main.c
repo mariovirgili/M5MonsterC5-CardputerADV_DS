@@ -22,10 +22,9 @@
 #include "buzzer.h"
 #include "text_ui.h"
 
-#define JANOS_ADV_VERSION "1.5.3"
+#define JANOS_ADV_VERSION "1.5.4"
 
-// Screen timeout configuration
-#define SCREEN_TIMEOUT_MS  30000  // 30 seconds
+// Screen timeout is now configurable via Settings (stored in NVS)
 
 static const char *TAG = "MAIN";
 
@@ -76,6 +75,9 @@ void app_main(void)
         return;
     }
     ESP_LOGI(TAG, "Display initialized successfully");
+
+    // Apply saved brightness setting
+    display_set_backlight(settings_get_screen_brightness());
 
     // Initialize battery monitoring
     ESP_LOGI(TAG, "Initializing battery monitoring...");
@@ -223,7 +225,7 @@ void app_main(void)
             
             // Wake screen if dimmed
             if (screen_dimmed) {
-                display_set_backlight(100);
+                display_set_backlight(settings_get_screen_brightness());
                 screen_dimmed = false;
                 ESP_LOGI(TAG, "Screen woken by keypress");
             }
@@ -232,7 +234,7 @@ void app_main(void)
         // SD card missing: show warning and allow ESC to continue
         if (board_sd_missing && !board_sd_popup_shown) {
             ESP_LOGW(TAG, "Board SD card not detected, showing popup...");
-            display_set_backlight(100);
+            display_set_backlight(settings_get_screen_brightness());
             ui_clear();
             ui_show_message_tall("Warning",
                             "SD missing in MonsterC5\n"
@@ -271,9 +273,10 @@ void app_main(void)
             }
         }
         
-        // Check for screen timeout
+        // Check for screen timeout (0 = stays on, never dims)
+        uint32_t timeout = settings_get_screen_timeout_ms();
         int64_t now = esp_timer_get_time() / 1000;
-        if (!screen_dimmed && (now - last_activity_time) > SCREEN_TIMEOUT_MS) {
+        if (!screen_dimmed && timeout > 0 && (now - last_activity_time) > timeout) {
             display_set_backlight(0);
             screen_dimmed = true;
             ESP_LOGI(TAG, "Screen dimmed due to inactivity");

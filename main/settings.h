@@ -14,6 +14,10 @@
 #define DEFAULT_UART_TX_PIN     2
 #define DEFAULT_UART_RX_PIN     1
 
+// Default screen settings
+#define DEFAULT_SCREEN_TIMEOUT_MS   30000   // 30 seconds
+#define DEFAULT_SCREEN_BRIGHTNESS   100     // 100%
+
 // Valid GPIO pin range for ESP32-S3
 #define MIN_GPIO_PIN            0
 #define MAX_GPIO_PIN            48
@@ -63,6 +67,32 @@ bool settings_get_red_team_enabled(void);
  * @return ESP_OK on success
  */
 esp_err_t settings_set_red_team_enabled(bool enabled);
+
+/**
+ * @brief Get screen dimming timeout in milliseconds
+ * @return Timeout in ms (0 = stays on, never dims)
+ */
+uint32_t settings_get_screen_timeout_ms(void);
+
+/**
+ * @brief Set screen dimming timeout
+ * @param timeout_ms Timeout in ms (0 = stays on)
+ * @return ESP_OK on success
+ */
+esp_err_t settings_set_screen_timeout_ms(uint32_t timeout_ms);
+
+/**
+ * @brief Get screen brightness percentage
+ * @return Brightness 1-100
+ */
+uint8_t settings_get_screen_brightness(void);
+
+/**
+ * @brief Set screen brightness percentage
+ * @param brightness 1-100
+ * @return ESP_OK on success
+ */
+esp_err_t settings_set_screen_brightness(uint8_t brightness);
 
 #endif // SETTINGS_H
 

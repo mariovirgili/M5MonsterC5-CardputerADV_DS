@@ -15,11 +15,15 @@ static const char *TAG = "SETTINGS";
 #define NVS_KEY_UART_TX     "uart_tx"
 #define NVS_KEY_UART_RX     "uart_rx"
 #define NVS_KEY_RED_TEAM    "red_team"
+#define NVS_KEY_SCR_TIMEOUT "scr_tmout"
+#define NVS_KEY_SCR_BRIGHT  "scr_bright"
 
 // Cached values
 static int uart_tx_pin = DEFAULT_UART_TX_PIN;
 static int uart_rx_pin = DEFAULT_UART_RX_PIN;
 static bool red_team_enabled = false;  // Default: disabled
+static uint32_t screen_timeout_ms = DEFAULT_SCREEN_TIMEOUT_MS;
+static uint8_t screen_brightness = DEFAULT_SCREEN_BRIGHTNESS;
 
 // Reserved GPIO pins that should not be used (ESP32-S3 specific)
 // These include strapping pins, flash/PSRAM pins, USB pins, etc.
@@ -103,6 +107,20 @@ esp_err_t settings_init(void)
         if (nvs_get_u8(handle, NVS_KEY_RED_TEAM, &red_team_val) == ESP_OK) {
             red_team_enabled = (red_team_val != 0);
             ESP_LOGI(TAG, "Loaded Red Team enabled: %s", red_team_enabled ? "true" : "false");
+        }
+        
+        uint32_t timeout_val = 0;
+        if (nvs_get_u32(handle, NVS_KEY_SCR_TIMEOUT, &timeout_val) == ESP_OK) {
+            screen_timeout_ms = timeout_val;
+            ESP_LOGI(TAG, "Loaded screen timeout: %lu ms", (unsigned long)screen_timeout_ms);
+        }
+        
+        uint8_t bright_val = 0;
+        if (nvs_get_u8(handle, NVS_KEY_SCR_BRIGHT, &bright_val) == ESP_OK) {
+            if (bright_val >= 1 && bright_val <= 100) {
+                screen_brightness = bright_val;
+            }
+            ESP_LOGI(TAG, "Loaded screen brightness: %d%%", screen_brightness);
         }
         
         nvs_close(handle);
@@ -221,4 +239,75 @@ esp_err_t settings_set_red_team_enabled(bool enabled)
     return ESP_OK;
 }
 
+uint32_t settings_get_screen_timeout_ms(void)
+{
+    return screen_timeout_ms;
+}
 
+esp_err_t settings_set_screen_timeout_ms(uint32_t timeout_ms)
+{
+    nvs_handle_t handle;
+    esp_err_t ret = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open NVS for writing: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    ret = nvs_set_u32(handle, NVS_KEY_SCR_TIMEOUT, timeout_ms);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to write screen timeout: %s", esp_err_to_name(ret));
+        nvs_close(handle);
+        return ret;
+    }
+    
+    ret = nvs_commit(handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to commit NVS: %s", esp_err_to_name(ret));
+        nvs_close(handle);
+        return ret;
+    }
+    
+    nvs_close(handle);
+    screen_timeout_ms = timeout_ms;
+    
+    ESP_LOGI(TAG, "Screen timeout saved: %lu ms", (unsigned long)timeout_ms);
+    return ESP_OK;
+}
+
+uint8_t settings_get_screen_brightness(void)
+{
+    return screen_brightness;
+}
+
+esp_err_t settings_set_screen_brightness(uint8_t brightness)
+{
+    if (brightness < 1) brightness = 1;
+    if (brightness > 100) brightness = 100;
+    
+    nvs_handle_t handle;
+    esp_err_t ret = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open NVS for writing: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    ret = nvs_set_u8(handle, NVS_KEY_SCR_BRIGHT, brightness);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to write screen brightness: %s", esp_err_to_name(ret));
+        nvs_close(handle);
+        return ret;
+    }
+    
+    ret = nvs_commit(handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to commit NVS: %s", esp_err_to_name(ret));
+        nvs_close(handle);
+        return ret;
+    }
+    
+    nvs_close(handle);
+    screen_brightness = brightness;
+    
+    ESP_LOGI(TAG, "Screen brightness saved: %d%%", brightness);
+    return ESP_OK;
+}
