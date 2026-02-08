@@ -82,6 +82,7 @@ idf_component_register(
         "screens/rogue_ap_password_screen.c"
         "screens/rogue_ap_html_screen.c"
         "screens/rogue_ap_screen.c"
+        "screens/wpasec_upload_screen.c"
     INCLUDE_DIRS 
         "."
         "drivers"
@@ -95,6 +96,7 @@ idf_component_register(
         esp_driver_gpio
         esp_driver_spi
         esp_driver_i2s
+        esp_driver_ledc
         fatfs
         vfs
         sdmmc

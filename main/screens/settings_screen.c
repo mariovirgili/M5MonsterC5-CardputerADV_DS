@@ -9,10 +9,13 @@
 #include "gps_module_screen.h"
 #include "channel_time_settings_screen.h"
 #include "settings.h"
+#include "display.h"
+#include "keyboard.h"
 #include "text_ui.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 static const char *TAG = "SETTINGS_SCREEN";
 
@@ -21,8 +24,15 @@ static const char *TAG = "SETTINGS_SCREEN";
 #define MENU_VENDOR_LOOKUP  1
 #define MENU_GPS_MODULE     2
 #define MENU_CHANNEL_TIME   3
-#define MENU_RED_TEAM       4
-#define MENU_ITEM_COUNT     5
+#define MENU_SCR_TIMEOUT    4
+#define MENU_SCR_BRIGHT     5
+#define MENU_RED_TEAM       6
+#define MENU_ITEM_COUNT     7
+
+// Screen dimming timeout options (in ms)
+static const uint32_t timeout_options[] = { 10000, 30000, 60000, 300000, 0 };
+static const char *timeout_labels[] = { "10s", "30s", "1min", "5min", "Stays On" };
+#define TIMEOUT_OPTION_COUNT 5
 
 // Screen user data
 typedef struct {
@@ -30,9 +40,44 @@ typedef struct {
     bool awaiting_disclaimer_confirm;  // Waiting for user to confirm disclaimer
 } settings_screen_data_t;
 
+/**
+ * @brief Get the index of the current timeout value in timeout_options[]
+ */
+static int get_timeout_option_index(void)
+{
+    uint32_t current = settings_get_screen_timeout_ms();
+    for (int i = 0; i < TIMEOUT_OPTION_COUNT; i++) {
+        if (timeout_options[i] == current) {
+            return i;
+        }
+    }
+    return 1;  // Default to 30s if not found
+}
+
+/**
+ * @brief Format a setting label with a right-aligned value
+ * Builds a string like "Dimming       30s" that fills 30 columns
+ */
+static void format_setting_line(char *buf, size_t buf_size, const char *label, const char *value)
+{
+    int label_len = strlen(label);
+    int value_len = strlen(value);
+    int total_cols = 29;  // Leave 1 col margin
+    int padding = total_cols - label_len - value_len;
+    if (padding < 1) padding = 1;
+    
+    snprintf(buf, buf_size, "%s", label);
+    int pos = label_len;
+    for (int i = 0; i < padding && pos < (int)buf_size - 1; i++) {
+        buf[pos++] = ' ';
+    }
+    snprintf(buf + pos, buf_size - pos, "%s", value);
+}
+
 static void draw_menu_item_at(int index, bool selected)
 {
     bool red_team = settings_get_red_team_enabled();
+    char line[40];
     
     switch (index) {
         case MENU_UART_PINS:
@@ -47,6 +92,21 @@ static void draw_menu_item_at(int index, bool selected)
         case MENU_CHANNEL_TIME:
             ui_draw_menu_item(index + 1, "Channel Time", selected, false, false);
             break;
+        case MENU_SCR_TIMEOUT:
+        {
+            int idx = get_timeout_option_index();
+            format_setting_line(line, sizeof(line), "Dimming", timeout_labels[idx]);
+            ui_draw_menu_item(index + 1, line, selected, false, false);
+            break;
+        }
+        case MENU_SCR_BRIGHT:
+        {
+            char val[8];
+            snprintf(val, sizeof(val), "%d%%", settings_get_screen_brightness());
+            format_setting_line(line, sizeof(line), "Brightness", val);
+            ui_draw_menu_item(index + 1, line, selected, false, false);
+            break;
+        }
         case MENU_RED_TEAM:
             ui_draw_menu_item(index + 1, "Enable Red Team", selected, true, red_team);
             break;
@@ -62,13 +122,10 @@ static void draw_screen(screen_t *self)
     // Draw title
     ui_draw_title("Settings");
     
-    // Draw menu items
+    // Draw menu items (7 items + title = 8 rows, no room for status bar)
     for (int i = 0; i < MENU_ITEM_COUNT; i++) {
         draw_menu_item_at(i, i == data->selected_index);
     }
-    
-    // Draw status bar
-    ui_draw_status("UP/DOWN:Nav ENTER:Select ESC:Back");
 }
 
 // Optimized: redraw only two changed rows
@@ -82,6 +139,33 @@ static void show_red_team_disclaimer(void)
 {
     ui_show_message("DISCLAIMER", 
         "Test YOUR networks only!");
+}
+
+/**
+ * @brief Cycle screen timeout to the next/previous option
+ * @param direction +1 for next, -1 for previous
+ */
+static void cycle_timeout(int direction)
+{
+    int idx = get_timeout_option_index();
+    idx += direction;
+    if (idx >= TIMEOUT_OPTION_COUNT) idx = 0;
+    if (idx < 0) idx = TIMEOUT_OPTION_COUNT - 1;
+    settings_set_screen_timeout_ms(timeout_options[idx]);
+}
+
+/**
+ * @brief Adjust screen brightness
+ * @param delta Amount to change (-100 to +100)
+ */
+static void adjust_brightness(int delta)
+{
+    int current = (int)settings_get_screen_brightness();
+    current += delta;
+    if (current < 1) current = 1;
+    if (current > 100) current = 100;
+    settings_set_screen_brightness((uint8_t)current);
+    display_set_backlight((uint8_t)current);
 }
 
 static void on_key(screen_t *self, key_code_t key)
@@ -128,6 +212,30 @@ static void on_key(screen_t *self, key_code_t key)
             }
             break;
             
+        case KEY_LEFT:
+            if (data->selected_index == MENU_SCR_TIMEOUT) {
+                cycle_timeout(-1);
+                draw_menu_item_at(MENU_SCR_TIMEOUT, true);
+            } else if (data->selected_index == MENU_SCR_BRIGHT) {
+                // Without Shift: -10%, with Shift: -1%
+                int step = keyboard_is_shift_held() ? -1 : -10;
+                adjust_brightness(step);
+                draw_menu_item_at(MENU_SCR_BRIGHT, true);
+            }
+            break;
+            
+        case KEY_RIGHT:
+            if (data->selected_index == MENU_SCR_TIMEOUT) {
+                cycle_timeout(+1);
+                draw_menu_item_at(MENU_SCR_TIMEOUT, true);
+            } else if (data->selected_index == MENU_SCR_BRIGHT) {
+                // Without Shift: +10%, with Shift: +1%
+                int step = keyboard_is_shift_held() ? 1 : 10;
+                adjust_brightness(step);
+                draw_menu_item_at(MENU_SCR_BRIGHT, true);
+            }
+            break;
+            
         case KEY_ENTER:
         case KEY_SPACE:
             {
@@ -143,6 +251,14 @@ static void on_key(screen_t *self, key_code_t key)
                         break;
                     case MENU_CHANNEL_TIME:
                         screen_manager_push(channel_time_settings_screen_create, NULL);
+                        break;
+                    case MENU_SCR_TIMEOUT:
+                        // ENTER also cycles timeout forward
+                        cycle_timeout(+1);
+                        draw_menu_item_at(MENU_SCR_TIMEOUT, true);
+                        break;
+                    case MENU_SCR_BRIGHT:
+                        // No action on ENTER for brightness (use arrows)
                         break;
                     case MENU_RED_TEAM:
                         if (settings_get_red_team_enabled()) {
@@ -210,4 +326,3 @@ screen_t* settings_screen_create(void *params)
     ESP_LOGI(TAG, "Settings screen created");
     return screen;
 }
-

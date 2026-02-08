@@ -10,9 +10,23 @@
 #include "esp_lcd_panel_ops.h"
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
+#include "driver/ledc.h"
 #include <string.h>
 
 static const char *TAG = "DISPLAY";
+
+// LEDC PWM configuration for backlight
+#define BL_LEDC_TIMER       LEDC_TIMER_0
+#define BL_LEDC_MODE        LEDC_LOW_SPEED_MODE
+#define BL_LEDC_CHANNEL     LEDC_CHANNEL_0
+#define BL_LEDC_FREQ_HZ     5000
+#define BL_LEDC_RESOLUTION  LEDC_TIMER_13_BIT  // 0-8191 duty (13-bit for fine control)
+
+// Cardputer backlight needs high PWM duty to produce visible light.
+// Below ~88% duty the backlight is essentially off.
+// Map user brightness 1-100% to the visible duty range only.
+#define BL_DUTY_MAX         8191
+#define BL_DUTY_MIN         7200  // ~88% of max - minimum visible on Cardputer
 
 static esp_lcd_panel_handle_t panel_handle = NULL;
 
@@ -27,13 +41,26 @@ esp_err_t display_init(void)
 {
     ESP_LOGI(TAG, "Initializing ST7789 display...");
 
-    // Configure backlight GPIO
-    gpio_config_t bk_gpio_config = {
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = 1ULL << DISPLAY_PIN_BL
+    // Configure backlight via LEDC PWM for brightness control
+    ledc_timer_config_t ledc_timer = {
+        .speed_mode       = BL_LEDC_MODE,
+        .timer_num        = BL_LEDC_TIMER,
+        .duty_resolution  = BL_LEDC_RESOLUTION,
+        .freq_hz          = BL_LEDC_FREQ_HZ,
+        .clk_cfg          = LEDC_AUTO_CLK,
     };
-    ESP_ERROR_CHECK(gpio_config(&bk_gpio_config));
-    gpio_set_level(DISPLAY_PIN_BL, 1);  // Turn on backlight
+    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+
+    ledc_channel_config_t ledc_channel = {
+        .speed_mode     = BL_LEDC_MODE,
+        .channel        = BL_LEDC_CHANNEL,
+        .timer_sel      = BL_LEDC_TIMER,
+        .intr_type      = LEDC_INTR_DISABLE,
+        .gpio_num       = DISPLAY_PIN_BL,
+        .duty           = BL_DUTY_MAX,  // Start at full brightness
+        .hpoint         = 0,
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 
     // Configure SPI bus
     spi_bus_config_t buscfg = {
@@ -154,7 +181,17 @@ void display_clear(uint16_t color)
 
 void display_set_backlight(uint8_t brightness)
 {
-    gpio_set_level(DISPLAY_PIN_BL, brightness > 0 ? 1 : 0);
+    // Map 0% to off, 1-100% to the visible duty range (BL_DUTY_MIN..BL_DUTY_MAX)
+    uint32_t duty = 0;
+    if (brightness > 0) {
+        if (brightness >= 100) {
+            duty = BL_DUTY_MAX;
+        } else {
+            duty = BL_DUTY_MIN + (uint32_t)(brightness - 1) * (BL_DUTY_MAX - BL_DUTY_MIN) / 99;
+        }
+    }
+    ledc_set_duty(BL_LEDC_MODE, BL_LEDC_CHANNEL, duty);
+    ledc_update_duty(BL_LEDC_MODE, BL_LEDC_CHANNEL);
 }
 
 void display_flush(void)

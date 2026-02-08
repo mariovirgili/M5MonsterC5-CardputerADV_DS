@@ -6,6 +6,7 @@
 #include "network_attacks_screen.h"
 #include "wifi_connect_screen.h"
 #include "arp_hosts_screen.h"
+#include "wpasec_upload_screen.h"
 #include "settings.h"
 #include "uart_handler.h"
 #include "text_ui.h"
@@ -15,20 +16,29 @@
 
 static const char *TAG = "NET_ATTACKS";
 
-// Menu indices
+// Menu item IDs
 #define MENU_WIFI      0
 #define MENU_ARP       1
+#define MENU_WPASEC    2
+
+#define MAX_MENU_ITEMS 3
 
 // Screen user data
 typedef struct {
     int selected_index;
-    int menu_count;    // 1 when red_team disabled, 2 when enabled
-    bool show_arp;     // Whether ARP Poisoning is visible
+    int menu_count;
+    int items[MAX_MENU_ITEMS];   // Ordered list of visible menu item IDs
+    bool show_arp;
 } network_attacks_data_t;
 
-static const char* get_wifi_menu_text(void)
+static const char* get_menu_text(int item_id)
 {
-    return uart_is_wifi_connected() ? "Disconnect from WiFi" : "Connect to WiFi";
+    switch (item_id) {
+        case MENU_WIFI:   return uart_is_wifi_connected() ? "Disconnect from WiFi" : "Connect to WiFi";
+        case MENU_ARP:    return "ARP Poisoning";
+        case MENU_WPASEC: return "WPA-SEC Upload";
+        default:          return "";
+    }
 }
 
 static void draw_screen(screen_t *self)
@@ -40,12 +50,10 @@ static void draw_screen(screen_t *self)
     // Draw title - use "Tests" when red team disabled
     ui_draw_title(settings_get_red_team_enabled() ? "Network Attacks" : "Network Tests");
     
-    // Draw menu items
-    ui_draw_menu_item(1, get_wifi_menu_text(), data->selected_index == MENU_WIFI, false, false);
-    
-    // Only show ARP Poisoning if red team enabled
-    if (data->show_arp) {
-        ui_draw_menu_item(2, "ARP Poisoning", data->selected_index == MENU_ARP, false, false);
+    // Draw all visible menu items
+    for (int i = 0; i < data->menu_count; i++) {
+        ui_draw_menu_item(i + 1, get_menu_text(data->items[i]),
+                          data->selected_index == i, false, false);
     }
     
     // Draw status bar
@@ -55,15 +63,13 @@ static void draw_screen(screen_t *self)
 // Optimized: redraw only two changed rows
 static void redraw_selection(network_attacks_data_t *data, int old_index, int new_index)
 {
-    const char *old_text = (old_index == MENU_WIFI) ? get_wifi_menu_text() : "ARP Poisoning";
-    const char *new_text = (new_index == MENU_WIFI) ? get_wifi_menu_text() : "ARP Poisoning";
-    
-    // Only redraw if indices are valid for current menu
     if (old_index < data->menu_count) {
-        ui_draw_menu_item(old_index + 1, old_text, false, false, false);
+        ui_draw_menu_item(old_index + 1, get_menu_text(data->items[old_index]),
+                          false, false, false);
     }
     if (new_index < data->menu_count) {
-        ui_draw_menu_item(new_index + 1, new_text, true, false, false);
+        ui_draw_menu_item(new_index + 1, get_menu_text(data->items[new_index]),
+                          true, false, false);
     }
 }
 
@@ -97,8 +103,9 @@ static void on_key(screen_t *self, key_code_t key)
             break;
             
         case KEY_ENTER:
-        case KEY_SPACE:
-            if (data->selected_index == MENU_WIFI) {
+        case KEY_SPACE: {
+            int item_id = data->items[data->selected_index];
+            if (item_id == MENU_WIFI) {
                 if (uart_is_wifi_connected()) {
                     // Disconnect
                     uart_send_command("wifi_disconnect");
@@ -109,11 +116,15 @@ static void on_key(screen_t *self, key_code_t key)
                     // Connect - push WiFi connect screen
                     screen_manager_push(wifi_connect_screen_create, NULL);
                 }
-            } else if (data->selected_index == MENU_ARP && data->show_arp) {
-                // ARP Poisoning - push hosts screen (only if visible)
+            } else if (item_id == MENU_ARP) {
+                // ARP Poisoning - push hosts screen
                 screen_manager_push(arp_hosts_screen_create, NULL);
+            } else if (item_id == MENU_WPASEC) {
+                // WPA-SEC Upload
+                screen_manager_push(wpasec_upload_screen_create, NULL);
             }
             break;
+        }
             
         case KEY_ESC:
         case KEY_Q:
@@ -158,7 +169,13 @@ screen_t* network_attacks_screen_create(void *params)
     // Configure menu based on red team setting
     bool red_team = settings_get_red_team_enabled();
     data->show_arp = red_team;
-    data->menu_count = red_team ? 2 : 1;  // Only WiFi when red team disabled
+    int idx = 0;
+    data->items[idx++] = MENU_WIFI;
+    if (red_team) {
+        data->items[idx++] = MENU_ARP;
+    }
+    data->items[idx++] = MENU_WPASEC;
+    data->menu_count = idx;
     
     ESP_LOGI(TAG, "Network menu: show_arp=%d, menu_count=%d", data->show_arp, data->menu_count);
     
