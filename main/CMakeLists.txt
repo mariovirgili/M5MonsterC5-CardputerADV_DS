@@ -82,6 +82,7 @@ idf_component_register(
         "screens/rogue_ap_password_screen.c"
         "screens/rogue_ap_html_screen.c"
         "screens/rogue_ap_screen.c"
+        "screens/wpasec_upload_screen.c"
     INCLUDE_DIRS 
         "."
         "drivers"

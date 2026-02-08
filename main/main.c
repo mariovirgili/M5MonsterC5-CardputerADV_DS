@@ -22,7 +22,7 @@
 #include "buzzer.h"
 #include "text_ui.h"
 
-#define JANOS_ADV_VERSION "1.5.2"
+#define JANOS_ADV_VERSION "1.5.3"
 
 // Screen timeout configuration
 #define SCREEN_TIMEOUT_MS  30000  // 30 seconds
@@ -33,6 +33,11 @@ static volatile bool board_sd_missing = false;
 static volatile bool board_sd_check_pending = false;
 static int64_t board_sd_check_start_ms = 0;
 static bool board_sd_popup_shown = false;
+
+bool is_board_sd_missing(void)
+{
+    return board_sd_missing;
+}
 
 static void uart_sd_check_line_callback(const char *line, void *user_data)
 {
